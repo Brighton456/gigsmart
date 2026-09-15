@@ -1,0 +1,17 @@
+# Ignore files for Netlify deployment
+node_modules
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.*.local
+.cache
+dist
+web-build/node_modules
+*.log
+.DS_Store
+.vscode
+.idea
+coverage
+.nyc_output

@@ -1,0 +1,426 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+  StatusBar,
+  Alert,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import SafeIonicons from '../../components/SafeIonicons';
+import { useAuth } from '../../context/SupabaseAuthContext';
+import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
+import { APP_SHORT_NAME } from '../../constants/branding';
+
+const generateSecurityCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+const RegisterScreen = ({ navigation, route }) => {
+  const referralCode = route.params?.referralCode || '';
+
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [securityInput, setSecurityInput] = useState('');
+  const [securityCode, setSecurityCode] = useState(generateSecurityCode);
+  const [referrer, setReferrer] = useState(referralCode);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const { signUp } = useAuth();
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Enter a valid email address';
+    }
+
+    if (!phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\+?\d[\d\s-]{8,}$/.test(phone.trim())) {
+      newErrors.phone = 'Enter a valid phone number';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (!securityInput.trim()) {
+      newErrors.securityInput = 'Enter the security code';
+    } else if (securityInput.trim() !== securityCode) {
+      newErrors.securityInput = 'Security code does not match';
+    }
+
+    if (!acceptTerms) {
+      newErrors.acceptTerms = 'Please agree to the terms to continue';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleRegister = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await signUp({
+        email,
+        phone,
+        password,
+        referralCode: referrer,
+        securityCode,
+      });
+    } catch (error) {
+      Alert.alert('Registration Failed', 'Could not create account. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshSecurityCode = () => {
+    setSecurityCode(generateSecurityCode());
+    setSecurityInput('');
+  };
+
+  return (
+    <LinearGradient colors={gradients.primary} style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView contentContainerStyle={styles.scrollView}>
+          <StatusBar barStyle="light-content" />
+
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <SafeIonicons name="arrow-back" size={24} color={colors.white} />
+          </TouchableOpacity>
+
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoText}>{APP_SHORT_NAME}</Text>
+            </View>
+            <Text style={styles.title}>Create your account</Text>
+            <Text style={styles.subtitle}>Unlock daily earnings, tasks, and mentorship in minutes.</Text>
+          </View>
+
+          <View style={styles.formCard}>
+            <View style={styles.inputGroup}>
+              <SafeIonicons name="mail-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email address"
+                placeholderTextColor={colors.gray500}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+            <View style={styles.inputGroup}>
+              <SafeIonicons name="call-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="+254 712 345 678"
+                placeholderTextColor={colors.gray500}
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+              />
+            </View>
+            {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+
+            <View style={styles.inputGroup}>
+              <SafeIonicons name="lock-closed-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Create your password"
+                placeholderTextColor={colors.gray500}
+                secureTextEntry={!isPasswordVisible}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity onPress={() => setIsPasswordVisible(prev => !prev)} style={styles.eyeButton}>
+                <SafeIonicons
+                  name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.gray600}
+                />
+              </TouchableOpacity>
+            </View>
+            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+            <View style={styles.inputGroup}>
+              <SafeIonicons name="lock-closed-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm your password"
+                placeholderTextColor={colors.gray500}
+                secureTextEntry={!isConfirmPasswordVisible}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              <TouchableOpacity onPress={() => setIsConfirmPasswordVisible(prev => !prev)} style={styles.eyeButton}>
+                <SafeIonicons
+                  name={isConfirmPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.gray600}
+                />
+              </TouchableOpacity>
+            </View>
+            {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+
+            <View style={styles.inputGroup}>
+              <SafeIonicons name="shield-checkmark-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Security code"
+                placeholderTextColor={colors.gray500}
+                keyboardType="numeric"
+                value={securityInput}
+                onChangeText={setSecurityInput}
+                maxLength={6}
+              />
+              <View style={styles.codeBox}>
+                <Text style={styles.codeText}>{securityCode}</Text>
+                <TouchableOpacity onPress={refreshSecurityCode} style={styles.refreshButton}>
+                  <SafeIonicons name="refresh" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            {errors.securityInput && <Text style={styles.errorText}>{errors.securityInput}</Text>}
+
+            <View style={styles.inputGroup}>
+              <SafeIonicons name="person-add-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter referral code (optional)"
+                placeholderTextColor={colors.gray500}
+                value={referrer}
+                onChangeText={setReferrer}
+                autoCapitalize="characters"
+              />
+            </View>
+
+            <View style={styles.checkboxRow}>
+              <TouchableOpacity onPress={() => setAcceptTerms(prev => !prev)} style={styles.checkboxButton}>
+                <SafeIonicons
+                  name={acceptTerms ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={acceptTerms ? colors.primary : colors.gray500}
+                />
+              </TouchableOpacity>
+              <Text style={styles.checkboxText}>
+                I agree to the Gig-Smart Terms of Service and Privacy Policy.
+              </Text>
+            </View>
+            {errors.acceptTerms && <Text style={styles.errorText}>{errors.acceptTerms}</Text>}
+
+            <TouchableOpacity
+              style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]}
+              onPress={handleRegister}
+              activeOpacity={0.9}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <>
+                  <SafeIonicons name="person-add" size={18} color={colors.white} style={styles.buttonIcon} />
+                  <Text style={styles.primaryButtonText}>Register</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('Login')}
+              activeOpacity={0.85}
+            >
+              <SafeIonicons name="log-in" size={16} color={colors.white} style={styles.buttonIcon} />
+              <Text style={styles.secondaryButtonText}>Already have an account? Login here</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xxl,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  logoBadge: {
+    width: 140,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  logoText: {
+    fontSize: fontSizes.xl,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  title: {
+    fontSize: fontSizes.xxl,
+    fontWeight: 'bold',
+    color: colors.white,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: fontSizes.md,
+    color: colors.blue200,
+    textAlign: 'center',
+  },
+  formCard: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 24,
+    padding: spacing.xl,
+    ...shadows.lg,
+  },
+  inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    height: 56,
+    marginTop: spacing.sm,
+    ...shadows.sm,
+  },
+  inputIcon: {
+    marginRight: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: fontSizes.md,
+    color: colors.textDark,
+  },
+  eyeButton: {
+    padding: spacing.xs,
+  },
+  codeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  codeText: {
+    fontSize: fontSizes.md,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  refreshButton: {
+    padding: spacing.xs,
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: fontSizes.sm,
+    marginTop: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  checkboxButton: {
+    marginTop: 2,
+  },
+  checkboxText: {
+    flex: 1,
+    color: colors.gray600,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
+  },
+  primaryButton: {
+    marginTop: spacing.xl,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    ...shadows.md,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
+  },
+  buttonIcon: {
+    marginRight: spacing.xs,
+  },
+  primaryButtonText: {
+    color: colors.white,
+    fontSize: fontSizes.lg,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    marginTop: spacing.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  secondaryButtonText: {
+    color: colors.white,
+    fontSize: fontSizes.md,
+    fontWeight: '600',
+  },
+});
+
+export default RegisterScreen;

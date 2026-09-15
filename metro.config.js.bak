@@ -1,0 +1,40 @@
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const config = getDefaultConfig(__dirname);
+
+// Add support for pnpm's hoisted node_modules structure
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+];
+
+if (config?.resolver?.sourceExts) {
+  config.resolver.sourceExts = Array.from(
+    new Set([...config.resolver.sourceExts, 'mjs'])
+  );
+}
+
+// Optimize Metro for web builds
+config.transformer.minifierConfig = {
+  keep_fnames: false,
+  mangle: {
+    keep_fnames: false,
+  },
+  compress: {
+    // Temporarily disable console stripping to debug web runtime issues
+    drop_console: false,
+    drop_debugger: false,
+    pure_funcs: [],
+  },
+  output: {
+    comments: false,
+  },
+};
+
+// Enable code splitting and reduce bundle size
+config.resolver.assetExts.push(['bin', 'txt', 'md', 'csv', 'xml']);
+
+// Optimize asset processing
+config.transformer.assetRegistryPath = require.resolve('react-native/Libraries/Image/AssetRegistry');
+
+module.exports = config;

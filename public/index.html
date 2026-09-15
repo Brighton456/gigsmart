@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta httpEquiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GigSmart</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(180deg, #0f3460 0%, #16213e 50%, #1a1a2e 100%);
+      color: #ffffff;
+    }
+    #root { 
+      height: 100vh; 
+      width: 100vw; 
+      display: flex;
+      flex-direction: column;
+    }
+    .loading-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .loading-text {
+      font-size: 18px;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .loading-subtext {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid #ffffff;
+      border-top: 3px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    window.EXPO_PLATFORM = 'web';
+
+    window.addEventListener('load', () => {
+      console.log('🌐 Page loaded, awaiting Expo bundle mount...');
+
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.children.length === 0) {
+          console.warn('⚠️ Expo bundle has not mounted after 3s, showing fallback message');
+          root.innerHTML = `
+            <div style="
+              display:flex;
+              flex-direction:column;
+              justify-content:center;
+              align-items:center;
+              height:100vh;
+              background:#1a1a2e;
+              color:white;
+              text-align:center;
+              padding:24px;
+              gap:12px;
+              font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            ">
+              <div style="font-size:24px;font-weight:600;">⚠️ GigSmart is still loading…</div>
+              <div style="font-size:16px;opacity:0.75;max-width:420px;">
+                The web bundle has not mounted yet. Check the browser console for errors.
+              </div>
+            </div>
+          `;
+        }
+      }, 3000);
+    });
+  </script>
+  <!-- Load Expo bundle -->
+  <script src="/index.web.bundle?platform=web&dev=true&hot=false&lazy=false" crossorigin="anonymous"></script>
+</body>
+</html>

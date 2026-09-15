@@ -1,0 +1,539 @@
+section,table_name,column_name,data_type,related_table,related_column,relationship_type,trigger_name,trigger_event,trigger_action
+FOREIGN_KEY,activity_logs,user_id,null,users,id,activity_logs_user_id_fkey,null,null,null
+FOREIGN_KEY,gift_code_redemptions,gift_code_id,null,gift_codes,id,gift_code_redemptions_gift_code_id_fkey,null,null,null
+FOREIGN_KEY,gift_code_redemptions,user_id,null,users,id,gift_code_redemptions_user_id_fkey,null,null,null
+FOREIGN_KEY,investments,user_id,null,users,id,investments_user_id_fkey,null,null,null
+FOREIGN_KEY,real_balance_transactions,user_id,null,users,id,real_balance_transactions_user_id_fkey,null,null,null
+FOREIGN_KEY,referral_bonus_queue,referrer_id,null,users,id,referral_bonus_queue_referrer_id_fkey,null,null,null
+FOREIGN_KEY,referral_bonus_queue,referred_id,null,users,id,referral_bonus_queue_referred_id_fkey,null,null,null
+FOREIGN_KEY,referrals,referred_id,null,users,id,referrals_referred_id_fkey,null,null,null
+FOREIGN_KEY,referrals,referrer_id,null,users,id,referrals_referrer_id_fkey,null,null,null
+FOREIGN_KEY,spin_attempts,user_id,null,users,id,spin_attempts_user_id_fkey,null,null,null
+FOREIGN_KEY,suspicious_activity,user_id,null,users,id,suspicious_activity_user_id_fkey,null,null,null
+FOREIGN_KEY,suspicious_activity,reviewed_by,null,users,id,suspicious_activity_reviewed_by_fkey,null,null,null
+FOREIGN_KEY,task_completions,user_id,null,users,id,task_completions_user_id_fkey,null,null,null
+FOREIGN_KEY,transactions,user_id,null,users,id,transactions_user_id_fkey,null,null,null
+FOREIGN_KEY,user_activity_logs,user_id,null,users,id,user_activity_logs_user_id_fkey,null,null,null
+FOREIGN_KEY,user_checkins,user_id,null,users,id,user_checkins_user_id_fkey,null,null,null
+FOREIGN_KEY,user_daily_activity,user_id,null,users,id,user_daily_activity_user_id_fkey,null,null,null
+FOREIGN_KEY,users,referred_by,null,users,id,users_referred_by_fkey,null,null,null
+FOREIGN_KEY,withdrawal_requests,user_id,null,users,id,withdrawal_requests_user_id_fkey,null,null,null
+FOREIGN_KEY,withdrawal_requests,transaction_id,null,transactions,id,withdrawal_requests_transaction_id_fkey,null,null,null
+TABLE_COLUMN,activation_payments,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,status,text,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,confirmed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,payhero_response,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,activation_payments,external_reference,text,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,event_type,text,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,severity,text,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,details,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,ip,inet,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,device_info,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,activity_logs,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,new_users,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_investment_returns,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_investment_volume,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,stat_date,date,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_gift_code_credits,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_spin_wins,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_referral_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_task_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,active_task_users,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_withdrawals,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_deposits,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_daily_statistics,total_users,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,gift_code_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,gift_code,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,main_wallet_reward,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,income_wallet_reward,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,redeemed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_gift_code_redemptions,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,bank_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,daily_rate,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,duration_days,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,withdrawn_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,maturity_date,date,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_investments_with_users,current_value,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referrer_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referred_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referred_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referrer_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referrer_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,is_active,boolean,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referred_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referrer_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,last_earning_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,total_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,level,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_referrals_with_users,referred_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,spin_date,date,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,prize_value,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,prize_won,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_spin_attempts_with_users,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,install_duration,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,completion_date,date,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,app_id,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,app_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_task_completions_with_users,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,net_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,payment_method,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,external_reference,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,description,text,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_transactions_with_users,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,restrictions,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,category_updated_at,timestamp without time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,balance_percentage,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,level_investment,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,user_category,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,real_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_real_balance,email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,total_withdrawals,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,current_level,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,level_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,is_active,boolean,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,income_wallet,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,main_wallet,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,wealth_fund_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,total_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,tasks_completed_today,integer,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,joined_date,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,last_login,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_user_summary,total_referrals,bigint,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,net_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,withdrawal_account_type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,withdrawal_account_details,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,payment_details,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,transaction_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,requested_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,user_category,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,real_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,user_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,external_reference,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,transaction_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,rejection_reason,text,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,payment_details,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,payment_method,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,processed_by,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,net_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,real_balance_status,text,null,null,null,null,null,null
+TABLE_COLUMN,admin_withdrawal_requests_with_balance,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_investment_returns,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_deposits,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_withdrawals,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,active_task_users,integer,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_task_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_referral_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_spin_wins,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_gift_code_credits,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_investment_volume,numeric,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,stat_date,date,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,new_users,integer,null,null,null,null,null,null
+TABLE_COLUMN,daily_statistics,total_users,integer,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,net_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,payment_method,character varying,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,external_reference,character varying,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,description,text,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,earnings_eligible_transactions,type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,gift_code_redemptions,main_wallet_reward,numeric,null,null,null,null,null,null
+TABLE_COLUMN,gift_code_redemptions,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,gift_code_redemptions,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,gift_code_redemptions,income_wallet_reward,numeric,null,null,null,null,null,null
+TABLE_COLUMN,gift_code_redemptions,redeemed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,gift_code_redemptions,gift_code_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,max_uses,integer,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,current_uses,integer,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,expires_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,description,text,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,created_by,character varying,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,income_wallet_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,reward_type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,code,character varying,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,main_wallet_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,gift_codes,is_active,boolean,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,description,text,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,min_amount,integer,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,days,integer,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,rate,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,id,integer,null,null,null,null,null,null
+TABLE_COLUMN,investment_banks,color,character varying,null,null,null,null,null,null
+TABLE_COLUMN,investments,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,investments,bank_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,investments,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investments,daily_rate,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investments,current_value,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investments,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,investments,duration_days,integer,null,null,null,null,null,null
+TABLE_COLUMN,investments,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,investments,withdrawn_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,investments,maturity_date,date,null,null,null,null,null,null
+TABLE_COLUMN,investments,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,investments,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,duration_days,integer,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,current_value,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,maturity_date,date,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,withdrawn_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,derived_status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,daily_rate,numeric,null,null,null,null,null,null
+TABLE_COLUMN,investments_with_status,bank_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,kenyan_banks,code,character varying,null,null,null,null,null,null
+TABLE_COLUMN,kenyan_banks,paybill_number,character varying,null,null,null,null,null,null
+TABLE_COLUMN,kenyan_banks,is_active,boolean,null,null,null,null,null,null
+TABLE_COLUMN,kenyan_banks,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,kenyan_banks,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,kenyan_banks,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,levels,description,text,null,null,null,null,null,null
+TABLE_COLUMN,levels,id,integer,null,null,null,null,null,null
+TABLE_COLUMN,levels,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,levels,cost,numeric,null,null,null,null,null,null
+TABLE_COLUMN,levels,daily_rate,numeric,null,null,null,null,null,null
+TABLE_COLUMN,levels,tasks_required,integer,null,null,null,null,null,null
+TABLE_COLUMN,levels,earnings_per_task,numeric,null,null,null,null,null,null
+TABLE_COLUMN,levels,is_locked,boolean,null,null,null,null,null,null
+TABLE_COLUMN,levels,icon,character varying,null,null,null,null,null,null
+TABLE_COLUMN,levels,color,character varying,null,null,null,null,null,null
+TABLE_COLUMN,levels,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,alert_thresholds,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,monitoring_rules,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,bot_type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,bot_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,monitoring_bots,last_run,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,notifications,background_color,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,priority,integer,null,null,null,null,null,null
+TABLE_COLUMN,notifications,show_for_days,integer,null,null,null,null,null,null
+TABLE_COLUMN,notifications,button_2,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,has_image,boolean,null,null,null,null,null,null
+TABLE_COLUMN,notifications,show_once,boolean,null,null,null,null,null,null
+TABLE_COLUMN,notifications,apply_to_levels,ARRAY,null,null,null,null,null,null
+TABLE_COLUMN,notifications,status,boolean,null,null,null,null,null,null
+TABLE_COLUMN,notifications,poster_number,integer,null,null,null,null,null,null
+TABLE_COLUMN,notifications,page_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,icon,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,heading,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,content,text,null,null,null,null,null,null
+TABLE_COLUMN,notifications,button_1,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,id,integer,null,null,null,null,null,null
+TABLE_COLUMN,notifications,link_url,text,null,null,null,null,null,null
+TABLE_COLUMN,notifications,image_url,text,null,null,null,null,null,null
+TABLE_COLUMN,notifications,updated_at,timestamp without time zone,null,null,null,null,null,null
+TABLE_COLUMN,notifications,created_at,timestamp without time zone,null,null,null,null,null,null
+TABLE_COLUMN,notifications,expires_at,timestamp without time zone,null,null,null,null,null,null
+TABLE_COLUMN,notifications,show_on_startup,boolean,null,null,null,null,null,null
+TABLE_COLUMN,notifications,dismissible,boolean,null,null,null,null,null,null
+TABLE_COLUMN,notifications,animation,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,border_color,character varying,null,null,null,null,null,null
+TABLE_COLUMN,notifications,text_color,character varying,null,null,null,null,null,null
+TABLE_COLUMN,payment_callbacks,callback_data,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,payment_callbacks,external_reference,text,null,null,null,null,null,null
+TABLE_COLUMN,payment_callbacks,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,payment_callbacks,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,payment_callbacks,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,payment_callbacks,status,text,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,transaction_type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,created_at,timestamp without time zone,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,related_transaction_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,description,text,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,new_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,real_balance_transactions,previous_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,referrer_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,risk_score,integer,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,is_suspicious,boolean,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,is_recruit,boolean,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,status,text,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,level,integer,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,referred_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,referral_bonus_queue,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,referrals,is_active,boolean,null,null,null,null,null,null
+TABLE_COLUMN,referrals,last_earning_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,referrals,total_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,referrals,level,integer,null,null,null,null,null,null
+TABLE_COLUMN,referrals,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,referrals,referred_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,referrals,referrer_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,referrals,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,spin_date,date,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,prize_value,numeric,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,prize_won,character varying,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,spin_attempts,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,status,text,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,reviewed_by,uuid,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,reviewed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,user_agent,text,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,ip_address,inet,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,risk_score,integer,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,description,text,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,activity_type,text,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,suspicious_activity,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,system_settings,key,character varying,null,null,null,null,null,null
+TABLE_COLUMN,system_settings,updated_by,character varying,null,null,null,null,null,null
+TABLE_COLUMN,system_settings,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,system_settings,description,text,null,null,null,null,null,null
+TABLE_COLUMN,system_settings,value,text,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,completion_date,date,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,install_duration,integer,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,app_name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,app_id,character varying,null,null,null,null,null,null
+TABLE_COLUMN,task_completions,earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,transactions,external_reference,character varying,null,null,null,null,null,null
+TABLE_COLUMN,transactions,description,text,null,null,null,null,null,null
+TABLE_COLUMN,transactions,metadata,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,transactions,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,transactions,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,transactions,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,transactions,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,transactions,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,transactions,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,transactions,type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,transactions,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,transactions,net_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,transactions,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,transactions,payment_method,character varying,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_logs,action,text,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_logs,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_logs,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_logs,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_logs,details,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,days_missed,bigint,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,checkins,bigint,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,account_age_days,integer,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,created_date,date,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,user_activity_summary,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,checkin_date,date,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,user_agent,text,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,ip_address,inet,null,null,null,null,null,null
+TABLE_COLUMN,user_checkins,checkin_time,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,user_daily_activity,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_daily_activity,last_seen_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,user_daily_activity,activity_date,date,null,null,null,null,null,null
+TABLE_COLUMN,user_daily_activity,ip,inet,null,null,null,null,null,null
+TABLE_COLUMN,user_daily_activity,device_info,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,user_earnings_by_period,total_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,user_earnings_by_period,month_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,user_earnings_by_period,week_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,user_earnings_by_period,yesterday_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,user_earnings_by_period,today_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,user_earnings_by_period,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_gift_code_earnings,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_gift_code_earnings,gift_code_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,user_task_progress_today,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,user_task_progress_today,completed_tasks,bigint,null,null,null,null,null,null
+TABLE_COLUMN,user_task_progress_today,today_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,withdrawal_password_hash,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,withdrawal_account_details,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,withdrawal_account_type,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,wealth_fund_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,yesterday_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,is_recruit,boolean,null,null,null,null,null,null
+TABLE_COLUMN,users,is_active,boolean,null,null,null,null,null,null
+TABLE_COLUMN,users,restrictions,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,users,category_updated_at,timestamp without time zone,null,null,null,null,null,null
+TABLE_COLUMN,users,user_category,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,real_balance,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,recharge_wallet,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,level_investment,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,withdrawal_account_verified,boolean,null,null,null,null,null,null
+TABLE_COLUMN,users,ip_address,inet,null,null,null,null,null,null
+TABLE_COLUMN,users,device_info,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,users,login_count,integer,null,null,null,null,null,null
+TABLE_COLUMN,users,last_login,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,users,gift_code_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,referral_rebate_total,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,total_withdrawals,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,total_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,month_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,week_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,today_earnings,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,tasks_reset_date,date,null,null,null,null,null,null
+TABLE_COLUMN,users,tasks_completed_today,integer,null,null,null,null,null,null
+TABLE_COLUMN,users,main_wallet,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,income_wallet,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,level_upgraded_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,users,current_level,integer,null,null,null,null,null,null
+TABLE_COLUMN,users,referred_by,uuid,null,null,null,null,null,null
+TABLE_COLUMN,users,referral_code,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,security_code,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,name,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,password_hash,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,users,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,users,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,users,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,users,last_daily_reset,date,null,null,null,null,null,null
+TABLE_COLUMN,users,total_earned,numeric,null,null,null,null,null,null
+TABLE_COLUMN,users,activation_date,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,users,is_activated,boolean,null,null,null,null,null,null
+TABLE_COLUMN,users,has_seen_onboarding,boolean,null,null,null,null,null,null
+TABLE_COLUMN,users,onboarding_complete,boolean,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,net_amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,external_reference,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,processed_by,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,payment_method,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,payment_details,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,updated_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,transaction_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,requested_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests,rejection_reason,text,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,fee,numeric,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,status,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,payment_method,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,payment_details,jsonb,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,admin_notes,text,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,created_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,processed_at,timestamp with time zone,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,user_email,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,status_style,text,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,user_id,uuid,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,username,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,user_phone,character varying,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,amount,numeric,null,null,null,null,null,null
+TABLE_COLUMN,withdrawal_requests_status_view,net_amount,numeric,null,null,null,null,null,null
+TRIGGER,activation_payments,null,null,null,null,null,update_activation_payments_updated_at,UPDATE,EXECUTE FUNCTION update_updated_at_column()
+TRIGGER,gift_code_redemptions,null,null,null,null,null,Giftcode,INSERT,"EXECUTE FUNCTION supabase_functions.http_request('https://webhook-email-forwarder.windsurf.build', 'POST', '{""Content-type"":""application/json""}', '{}', '5000')"
+TRIGGER,gift_code_redemptions,null,null,null,null,null,Giftcode,UPDATE,"EXECUTE FUNCTION supabase_functions.http_request('https://webhook-email-forwarder.windsurf.build', 'POST', '{""Content-type"":""application/json""}', '{}', '5000')"
+TRIGGER,gift_code_redemptions,null,null,null,null,null,trigger_update_daily_stats_gift,INSERT,EXECUTE FUNCTION update_daily_stats_on_gift_redeem()
+TRIGGER,investments,null,null,null,null,null,trigger_update_daily_stats_investment,INSERT,EXECUTE FUNCTION update_daily_stats_on_investment()
+TRIGGER,payment_callbacks,null,null,null,null,null,update_payment_callbacks_updated_at,UPDATE,EXECUTE FUNCTION update_updated_at_column()
+TRIGGER,spin_attempts,null,null,null,null,null,trigger_update_daily_stats_spin,INSERT,EXECUTE FUNCTION update_daily_stats_on_spin()
+TRIGGER,task_completions,null,null,null,null,null,trigger_update_daily_stats_task,INSERT,EXECUTE FUNCTION update_daily_stats_on_task_complete()
+TRIGGER,transactions,null,null,null,null,null,trigger_update_user_stats,INSERT,EXECUTE FUNCTION update_user_stats()
+TRIGGER,transactions,null,null,null,null,null,trigger_zero_spin_winnings,INSERT,EXECUTE FUNCTION enforce_zero_spin_winnings()
+TRIGGER,transactions,null,null,null,null,null,trigger_update_user_stats,UPDATE,EXECUTE FUNCTION update_user_stats()
+TRIGGER,transactions,null,null,null,null,null,trigger_update_user_earnings,INSERT,EXECUTE FUNCTION update_user_earnings()
+TRIGGER,transactions,null,null,null,null,null,trigger_gift_code_earnings,INSERT,EXECUTE FUNCTION update_gift_code_earnings()
+TRIGGER,users,null,null,null,null,null,trigger_initialize_real_balance,INSERT,EXECUTE FUNCTION initialize_real_balance()
+TRIGGER,users,null,null,null,null,null,trigger_handle_level_upgrade,UPDATE,EXECUTE FUNCTION handle_level_upgrade()
+TRIGGER,users,null,null,null,null,null,trigger_update_daily_stats_user_light,INSERT,EXECUTE FUNCTION update_daily_stats_on_user_create_light()

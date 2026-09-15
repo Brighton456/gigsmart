@@ -1,0 +1,28 @@
+# Environment secrets
+.env
+.env.local
+.env.*.local
+Server/.env
+*/.env.local
+
+# Dependencies
+node_modules/
+
+# Expo / Metro
+.expo/
+.expo-deleted/
+web-build/
+
+# Supabase CLI (linked-project metadata, never commit)
+supabase/.temp
+
+# Freebuff thread-local state (logs, local db, project ids)
+.freebuff/
+
+# Data exports containing user data - never publish
+transactions_rows*.csv
+priviuou.csv
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

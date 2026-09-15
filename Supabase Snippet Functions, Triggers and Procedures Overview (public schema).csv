@@ -1,0 +1,669 @@
+trigger_name,trigger_event,table_name,firing_time,trigger_action,function_name,function_definition
+update_activation_payments_updated_at,UPDATE,activation_payments,BEFORE,EXECUTE FUNCTION update_updated_at_column(),update_updated_at_column,"CREATE OR REPLACE FUNCTION storage.update_updated_at_column()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW; 
+END;
+$function$
+"
+update_activation_payments_updated_at,UPDATE,activation_payments,BEFORE,EXECUTE FUNCTION update_updated_at_column(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+update_activation_payments_updated_at,UPDATE,activation_payments,BEFORE,EXECUTE FUNCTION update_updated_at_column(),update_updated_at_column,"CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$function$
+"
+update_activation_payments_updated_at,UPDATE,activation_payments,BEFORE,EXECUTE FUNCTION update_updated_at_column(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+Giftcode,UPDATE,gift_code_redemptions,AFTER,"EXECUTE FUNCTION supabase_functions.http_request('https://webhook-email-forwarder.windsurf.build', 'POST', '{""Content-type"":""application/json""}', '{}', '5000')",http_request,"CREATE OR REPLACE FUNCTION supabase_functions.http_request()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'supabase_functions'
+AS $function$
+    DECLARE
+      request_id bigint;
+      payload jsonb;
+      url text := TG_ARGV[0]::text;
+      method text := TG_ARGV[1]::text;
+      headers jsonb DEFAULT '{}'::jsonb;
+      params jsonb DEFAULT '{}'::jsonb;
+      timeout_ms integer DEFAULT 1000;
+    BEGIN
+      IF url IS NULL OR url = 'null' THEN
+        RAISE EXCEPTION 'url argument is missing';
+      END IF;
+
+      IF method IS NULL OR method = 'null' THEN
+        RAISE EXCEPTION 'method argument is missing';
+      END IF;
+
+      IF TG_ARGV[2] IS NULL OR TG_ARGV[2] = 'null' THEN
+        headers = '{""Content-Type"": ""application/json""}'::jsonb;
+      ELSE
+        headers = TG_ARGV[2]::jsonb;
+      END IF;
+
+      IF TG_ARGV[3] IS NULL OR TG_ARGV[3] = 'null' THEN
+        params = '{}'::jsonb;
+      ELSE
+        params = TG_ARGV[3]::jsonb;
+      END IF;
+
+      IF TG_ARGV[4] IS NULL OR TG_ARGV[4] = 'null' THEN
+        timeout_ms = 1000;
+      ELSE
+        timeout_ms = TG_ARGV[4]::integer;
+      END IF;
+
+      CASE
+        WHEN method = 'GET' THEN
+          SELECT http_get INTO request_id FROM net.http_get(
+            url,
+            params,
+            headers,
+            timeout_ms
+          );
+        WHEN method = 'POST' THEN
+          payload = jsonb_build_object(
+            'old_record', OLD,
+            'record', NEW,
+            'type', TG_OP,
+            'table', TG_TABLE_NAME,
+            'schema', TG_TABLE_SCHEMA
+          );
+
+          SELECT http_post INTO request_id FROM net.http_post(
+            url,
+            payload,
+            params,
+            headers,
+            timeout_ms
+          );
+        ELSE
+          RAISE EXCEPTION 'method argument % is invalid', method;
+      END CASE;
+
+      INSERT INTO supabase_functions.hooks
+        (hook_table_id, hook_name, request_id)
+      VALUES
+        (TG_RELID, TG_NAME, request_id);
+
+      RETURN NEW;
+    END
+  $function$
+"
+Giftcode,INSERT,gift_code_redemptions,AFTER,"EXECUTE FUNCTION supabase_functions.http_request('https://webhook-email-forwarder.windsurf.build', 'POST', '{""Content-type"":""application/json""}', '{}', '5000')",http_request,"CREATE OR REPLACE FUNCTION supabase_functions.http_request()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'supabase_functions'
+AS $function$
+    DECLARE
+      request_id bigint;
+      payload jsonb;
+      url text := TG_ARGV[0]::text;
+      method text := TG_ARGV[1]::text;
+      headers jsonb DEFAULT '{}'::jsonb;
+      params jsonb DEFAULT '{}'::jsonb;
+      timeout_ms integer DEFAULT 1000;
+    BEGIN
+      IF url IS NULL OR url = 'null' THEN
+        RAISE EXCEPTION 'url argument is missing';
+      END IF;
+
+      IF method IS NULL OR method = 'null' THEN
+        RAISE EXCEPTION 'method argument is missing';
+      END IF;
+
+      IF TG_ARGV[2] IS NULL OR TG_ARGV[2] = 'null' THEN
+        headers = '{""Content-Type"": ""application/json""}'::jsonb;
+      ELSE
+        headers = TG_ARGV[2]::jsonb;
+      END IF;
+
+      IF TG_ARGV[3] IS NULL OR TG_ARGV[3] = 'null' THEN
+        params = '{}'::jsonb;
+      ELSE
+        params = TG_ARGV[3]::jsonb;
+      END IF;
+
+      IF TG_ARGV[4] IS NULL OR TG_ARGV[4] = 'null' THEN
+        timeout_ms = 1000;
+      ELSE
+        timeout_ms = TG_ARGV[4]::integer;
+      END IF;
+
+      CASE
+        WHEN method = 'GET' THEN
+          SELECT http_get INTO request_id FROM net.http_get(
+            url,
+            params,
+            headers,
+            timeout_ms
+          );
+        WHEN method = 'POST' THEN
+          payload = jsonb_build_object(
+            'old_record', OLD,
+            'record', NEW,
+            'type', TG_OP,
+            'table', TG_TABLE_NAME,
+            'schema', TG_TABLE_SCHEMA
+          );
+
+          SELECT http_post INTO request_id FROM net.http_post(
+            url,
+            payload,
+            params,
+            headers,
+            timeout_ms
+          );
+        ELSE
+          RAISE EXCEPTION 'method argument % is invalid', method;
+      END CASE;
+
+      INSERT INTO supabase_functions.hooks
+        (hook_table_id, hook_name, request_id)
+      VALUES
+        (TG_RELID, TG_NAME, request_id);
+
+      RETURN NEW;
+    END
+  $function$
+"
+Giftcode,INSERT,gift_code_redemptions,AFTER,"EXECUTE FUNCTION supabase_functions.http_request('https://webhook-email-forwarder.windsurf.build', 'POST', '{""Content-type"":""application/json""}', '{}', '5000')",email,"CREATE OR REPLACE FUNCTION auth.email()
+ RETURNS text
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select 
+  coalesce(
+    nullif(current_setting('request.jwt.claim.email', true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email')
+  )::text
+$function$
+"
+Giftcode,UPDATE,gift_code_redemptions,AFTER,"EXECUTE FUNCTION supabase_functions.http_request('https://webhook-email-forwarder.windsurf.build', 'POST', '{""Content-type"":""application/json""}', '{}', '5000')",email,"CREATE OR REPLACE FUNCTION auth.email()
+ RETURNS text
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select 
+  coalesce(
+    nullif(current_setting('request.jwt.claim.email', true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email')
+  )::text
+$function$
+"
+trigger_update_daily_stats_gift,INSERT,gift_code_redemptions,AFTER,EXECUTE FUNCTION update_daily_stats_on_gift_redeem(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_daily_stats_gift,INSERT,gift_code_redemptions,AFTER,EXECUTE FUNCTION update_daily_stats_on_gift_redeem(),update_daily_stats_on_gift_redeem,"CREATE OR REPLACE FUNCTION public.update_daily_stats_on_gift_redeem()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Refresh daily statistics when gift code is redeemed
+    PERFORM ensure_daily_statistics_exists();
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_daily_stats_gift,INSERT,gift_code_redemptions,AFTER,EXECUTE FUNCTION update_daily_stats_on_gift_redeem(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_daily_stats_investment,INSERT,investments,AFTER,EXECUTE FUNCTION update_daily_stats_on_investment(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_daily_stats_investment,INSERT,investments,AFTER,EXECUTE FUNCTION update_daily_stats_on_investment(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_daily_stats_investment,INSERT,investments,AFTER,EXECUTE FUNCTION update_daily_stats_on_investment(),update_daily_stats_on_investment,"CREATE OR REPLACE FUNCTION public.update_daily_stats_on_investment()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Refresh daily statistics when investment is made
+    PERFORM ensure_daily_statistics_exists();
+    RETURN NEW;
+END;
+$function$
+"
+update_payment_callbacks_updated_at,UPDATE,payment_callbacks,BEFORE,EXECUTE FUNCTION update_updated_at_column(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+update_payment_callbacks_updated_at,UPDATE,payment_callbacks,BEFORE,EXECUTE FUNCTION update_updated_at_column(),update_updated_at_column,"CREATE OR REPLACE FUNCTION storage.update_updated_at_column()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW; 
+END;
+$function$
+"
+update_payment_callbacks_updated_at,UPDATE,payment_callbacks,BEFORE,EXECUTE FUNCTION update_updated_at_column(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+update_payment_callbacks_updated_at,UPDATE,payment_callbacks,BEFORE,EXECUTE FUNCTION update_updated_at_column(),update_updated_at_column,"CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_daily_stats_spin,INSERT,spin_attempts,AFTER,EXECUTE FUNCTION update_daily_stats_on_spin(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_daily_stats_spin,INSERT,spin_attempts,AFTER,EXECUTE FUNCTION update_daily_stats_on_spin(),update_daily_stats_on_spin,"CREATE OR REPLACE FUNCTION public.update_daily_stats_on_spin()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Refresh daily statistics when spin is made
+    PERFORM ensure_daily_statistics_exists();
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_daily_stats_spin,INSERT,spin_attempts,AFTER,EXECUTE FUNCTION update_daily_stats_on_spin(),pi,"CREATE OR REPLACE FUNCTION pg_catalog.pi()
+ RETURNS double precision
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$dpi$function$
+"
+trigger_update_daily_stats_spin,INSERT,spin_attempts,AFTER,EXECUTE FUNCTION update_daily_stats_on_spin(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_daily_stats_task,INSERT,task_completions,AFTER,EXECUTE FUNCTION update_daily_stats_on_task_complete(),update_daily_stats_on_task_complete,"CREATE OR REPLACE FUNCTION public.update_daily_stats_on_task_complete()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Refresh daily statistics when task is completed
+    PERFORM ensure_daily_statistics_exists();
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_daily_stats_task,INSERT,task_completions,AFTER,EXECUTE FUNCTION update_daily_stats_on_task_complete(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_daily_stats_task,INSERT,task_completions,AFTER,EXECUTE FUNCTION update_daily_stats_on_task_complete(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trg_create_withdrawal_request,INSERT,transactions,AFTER,EXECUTE FUNCTION create_withdrawal_request_from_transaction(),create_withdrawal_request,"CREATE OR REPLACE FUNCTION public.create_withdrawal_request(p_user_id uuid, p_amount numeric, p_fee numeric, p_payment_method character varying, p_payment_details jsonb)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+    v_request_id UUID;
+    v_net_amount DECIMAL(15,2);
+BEGIN
+    v_net_amount := p_amount - p_fee;
+    
+    -- Insert withdrawal request
+    INSERT INTO withdrawal_requests (
+        user_id,
+        amount,
+        fee,
+        net_amount,
+        payment_method,
+        payment_details
+    )
+    VALUES (
+        p_user_id,
+        p_amount,
+        p_fee,
+        v_net_amount,
+        p_payment_method,
+        p_payment_details
+    )
+    RETURNING id INTO v_request_id;
+    
+    -- Create pending transaction
+    INSERT INTO transactions (
+        user_id,
+        type,
+        amount,
+        fee,
+        net_amount,
+        status,
+        description,
+        metadata
+    )
+    VALUES (
+        p_user_id,
+        'withdrawal',
+        p_amount,
+        p_fee,
+        v_net_amount,
+        'pending',
+        'Withdrawal request - pending approval',
+        jsonb_build_object(
+            'withdrawal_request_id', v_request_id,
+            'payment_method', p_payment_method,
+            'payment_details', p_payment_details
+        )
+    );
+    
+    RETURN v_request_id;
+END;
+$function$
+"
+trg_create_withdrawal_request,INSERT,transactions,AFTER,EXECUTE FUNCTION create_withdrawal_request_from_transaction(),create_withdrawal_request_from_transaction,"CREATE OR REPLACE FUNCTION public.create_withdrawal_request_from_transaction()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Only run for withdrawal transactions
+    IF NEW.type = 'withdrawal' THEN
+        INSERT INTO withdrawal_requests (
+            user_id,
+            amount,
+            fee,
+            net_amount,
+            status,
+            requested_at,
+            transaction_id,
+            payment_method,
+            payment_details,
+            external_reference
+        )
+        SELECT 
+            NEW.user_id,
+            NEW.amount,
+            NEW.fee,
+            NEW.net_amount,
+            'pending',
+            NEW.created_at,
+            NEW.id,
+            (u.withdrawal_account_details::jsonb->>'type')::varchar,  -- extract method
+            jsonb_build_object(
+                'account_type', u.withdrawal_account_type,
+                'account_details', u.withdrawal_account_details
+            ),
+            NEW.external_reference
+        FROM users u
+        WHERE u.id = NEW.user_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$function$
+"
+trigger_gift_code_earnings,INSERT,transactions,AFTER,EXECUTE FUNCTION update_gift_code_earnings(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_gift_code_earnings,INSERT,transactions,AFTER,EXECUTE FUNCTION update_gift_code_earnings(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_gift_code_earnings,INSERT,transactions,AFTER,EXECUTE FUNCTION update_gift_code_earnings(),update_gift_code_earnings,"CREATE OR REPLACE FUNCTION public.update_gift_code_earnings()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Only update for gift code transactions
+    IF NEW.type = 'gift_code' AND NEW.amount > 0 THEN
+        UPDATE users 
+        SET 
+            gift_code_earnings = COALESCE(gift_code_earnings, 0) + NEW.amount,
+            total_earnings = total_earnings + NEW.amount,
+            updated_at = NOW()
+        WHERE id = NEW.user_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_user_earnings,INSERT,transactions,AFTER,EXECUTE FUNCTION update_user_earnings(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_user_earnings,INSERT,transactions,AFTER,EXECUTE FUNCTION update_user_earnings(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_user_earnings,INSERT,transactions,AFTER,EXECUTE FUNCTION update_user_earnings(),update_user_earnings,"CREATE OR REPLACE FUNCTION public.update_user_earnings()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Only update earnings for non-deposit transactions
+    IF NEW.type IN ('task_earning', 'referral_bonus', 'gift_code', 'spin_win') AND NEW.amount > 0 THEN
+        UPDATE users 
+        SET 
+            today_earnings = CASE 
+                WHEN DATE(NEW.created_at) = CURRENT_DATE THEN today_earnings + NEW.amount
+                ELSE today_earnings 
+            END,
+            total_earnings = total_earnings + NEW.amount,
+            updated_at = NOW()
+        WHERE id = NEW.user_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_user_stats,UPDATE,transactions,AFTER,EXECUTE FUNCTION update_user_stats(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_user_stats,UPDATE,transactions,AFTER,EXECUTE FUNCTION update_user_stats(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_user_stats,INSERT,transactions,AFTER,EXECUTE FUNCTION update_user_stats(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_user_stats,INSERT,transactions,AFTER,EXECUTE FUNCTION update_user_stats(),update_user_stats,"CREATE OR REPLACE FUNCTION public.update_user_stats()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    IF NEW.status = 'completed' THEN
+        UPDATE users SET
+            total_earnings = total_earnings + CASE WHEN NEW.amount > 0 THEN NEW.amount ELSE 0 END,
+            total_withdrawals = total_withdrawals + CASE WHEN NEW.type = 'withdrawal' THEN NEW.amount ELSE 0 END,
+            today_earnings = today_earnings + CASE WHEN NEW.amount > 0 AND DATE(NEW.created_at) = CURRENT_DATE THEN NEW.amount ELSE 0 END,
+            updated_at = NOW()
+        WHERE id = NEW.user_id;
+        
+        -- Refresh daily statistics
+        PERFORM ensure_daily_statistics_exists();
+    END IF;
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_user_stats,UPDATE,transactions,AFTER,EXECUTE FUNCTION update_user_stats(),update_user_stats,"CREATE OR REPLACE FUNCTION public.update_user_stats()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    IF NEW.status = 'completed' THEN
+        UPDATE users SET
+            total_earnings = total_earnings + CASE WHEN NEW.amount > 0 THEN NEW.amount ELSE 0 END,
+            total_withdrawals = total_withdrawals + CASE WHEN NEW.type = 'withdrawal' THEN NEW.amount ELSE 0 END,
+            today_earnings = today_earnings + CASE WHEN NEW.amount > 0 AND DATE(NEW.created_at) = CURRENT_DATE THEN NEW.amount ELSE 0 END,
+            updated_at = NOW()
+        WHERE id = NEW.user_id;
+        
+        -- Refresh daily statistics
+        PERFORM ensure_daily_statistics_exists();
+    END IF;
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_user_stats,INSERT,transactions,AFTER,EXECUTE FUNCTION update_user_stats(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_zero_spin_winnings,INSERT,transactions,BEFORE,EXECUTE FUNCTION enforce_zero_spin_winnings(),pi,"CREATE OR REPLACE FUNCTION pg_catalog.pi()
+ RETURNS double precision
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$dpi$function$
+"
+trigger_zero_spin_winnings,INSERT,transactions,BEFORE,EXECUTE FUNCTION enforce_zero_spin_winnings(),enforce_zero_spin_winnings,"CREATE OR REPLACE FUNCTION public.enforce_zero_spin_winnings()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- If this is a spin win transaction, force amount to zero
+    IF NEW.type = 'spin_win' THEN
+        NEW.amount := 0;
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$
+"
+trigger_handle_level_upgrade,UPDATE,users,AFTER,EXECUTE FUNCTION handle_level_upgrade(),handle_level_upgrade,"CREATE OR REPLACE FUNCTION public.handle_level_upgrade()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- If level changed, process referral payouts and update real balance
+    IF OLD.current_level IS DISTINCT FROM NEW.current_level THEN
+        -- Add the upgrade cost to user's real balance (they paid real money)
+        PERFORM update_real_balance(
+            NEW.id,
+            NEW.level_investment,
+            'level_upgrade',
+            'Level upgrade investment',
+            NULL
+        );
+        
+        -- Process referral payouts (deduct from uplines' real balances)
+        PERFORM process_referral_payouts(NEW.id, NEW.level_investment);
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$
+"
+trigger_initialize_real_balance,INSERT,users,BEFORE,EXECUTE FUNCTION initialize_real_balance(),initialize_real_balance,"CREATE OR REPLACE FUNCTION public.initialize_real_balance()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Set initial real balance to 0
+    NEW.real_balance := 0.00;
+    NEW.user_category := 'new';
+    NEW.category_updated_at := NOW();
+    NEW.restrictions := '{}';
+    
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_daily_stats_user_light,INSERT,users,AFTER,EXECUTE FUNCTION update_daily_stats_on_user_create_light(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp with time zone)
+ RETURNS date
+ LANGUAGE internal
+ STABLE PARALLEL SAFE STRICT
+AS $function$timestamptz_date$function$
+"
+trigger_update_daily_stats_user_light,INSERT,users,AFTER,EXECUTE FUNCTION update_daily_stats_on_user_create_light(),update_daily_stats_on_user_create,"CREATE OR REPLACE FUNCTION public.update_daily_stats_on_user_create()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Refresh daily statistics when new user joins
+    PERFORM ensure_daily_statistics_exists();
+    RETURN NEW;
+END;
+$function$
+"
+trigger_update_daily_stats_user_light,INSERT,users,AFTER,EXECUTE FUNCTION update_daily_stats_on_user_create_light(),date,"CREATE OR REPLACE FUNCTION pg_catalog.date(timestamp without time zone)
+ RETURNS date
+ LANGUAGE internal
+ IMMUTABLE PARALLEL SAFE STRICT
+AS $function$timestamp_date$function$
+"
+trigger_update_daily_stats_user_light,INSERT,users,AFTER,EXECUTE FUNCTION update_daily_stats_on_user_create_light(),update_daily_stats_on_user_create_light,"CREATE OR REPLACE FUNCTION public.update_daily_stats_on_user_create_light()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    -- Just ensure the daily stats record exists, don't refresh expensive calculations
+    INSERT INTO daily_statistics (stat_date)
+    VALUES (CURRENT_DATE)
+    ON CONFLICT (stat_date) DO NOTHING;
+    
+    RETURN NEW;
+END;
+$function$
+"
