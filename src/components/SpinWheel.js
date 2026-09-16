@@ -155,6 +155,24 @@ const SpinWheel = ({ visible, onClose }) => {
     const extraSpin = Math.random() * 720; // Up to 2 additional rotations
     const targetRotation = rotationRef.current + baseSpin + extraSpin;
 
+    let spinSettled = false;
+    let spinFailsafeTimer = null;
+
+    const settleSpin = () => {
+      if (spinSettled) return;
+      spinSettled = true;
+      if (spinFailsafeTimer) {
+        clearTimeout(spinFailsafeTimer);
+        spinFailsafeTimer = null;
+      }
+      resolveSpin();
+    };
+
+    // Failsafe: settle the spin if the animation callback never fires.
+    // Browsers throttle requestAnimationFrame for hidden tabs, which can
+    // stall the JS-driven wheel animation forever (seen on web preview).
+    spinFailsafeTimer = setTimeout(settleSpin, 4500);
+
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 1.1,
@@ -172,75 +190,68 @@ const SpinWheel = ({ visible, onClose }) => {
         duration: 200,
         useNativeDriver: Platform.OS !== 'web',
       }),
-    ]).start(() => {
-      rotationRef.current = ((targetRotation % 360) + 360) % 360;
-      spinValue.setValue(rotationRef.current);
-      const normalizedRotation = rotationRef.current;
-      const numSegments = wheelSegments.length;
-      const segmentIndex = Math.floor((normalizedRotation / 360) * numSegments) % numSegments;
-      const resultSegment = wheelSegments[segmentIndex];
-
-      const resolveSpin = async () => {
-        const nextTotal = totalSpins + 1;
-        setTotalSpins(nextTotal);
-
-        const earnedFreeSpin = nextTotal % 2 === 0;
-        if (earnedFreeSpin) {
-          setFreeSpins(prev => prev + 1);
-          showNotification({
-            type: 'success',
-            title: 'Free Spin Earned!',
-            message: 'Complete two spins to unlock a free round. Enjoy your bonus spin!',
-          });
-        }
-
-        const resultPrize = 0; // ALWAYS ZERO per requirement 10
-        if (resultPrize > 0) {
-          const success = await addToIncomeWallet(
-            resultPrize,
-            `Spin wheel reward: KES ${resultPrize}`,
-            'SPIN_WIN'
-          );
-
-          if (success) {
-            showNotification({
-              type: 'success',
-              title: 'Congratulations!',
-              message: `You won KES ${resultPrize.toLocaleString()}!`,
-            });
-          }
-        } else {
-          showNotification({
-            type: 'info',
-            title: 'Try Again!',
-            message: 'Keep spinning for fun! No cash rewards available.',
-          });
-        }
-
-        // Record the spin attempt in Supabase
-        try {
-          await supabaseData.recordSpinAttempt(
-            profile?.id,
-            selectedAmount,
-            resultPrize,
-            resultPrize > 0
-          );
-        } catch (e) {
-          // Non-blocking
-          console.log('Failed to record spin attempt', e);
-        }
-
-        // Refresh user data to update balances and history
-        await loadUserData();
-
-        setIsSpinning(false);
-        spinValue.setValue(0);
-      };
-
-      resolveSpin();
-    });
+    ]).start(settleSpin);
   };
 
+  const resolveSpin = async () => {
+    rotationRef.current = ((rotationRef.current % 360) + 360) % 360;
+    spinValue.setValue(rotationRef.current);
+
+    const nextTotal = totalSpins + 1;
+    setTotalSpins(nextTotal);
+
+    const earnedFreeSpin = nextTotal % 2 === 0;
+    if (earnedFreeSpin) {
+      setFreeSpins(prev => prev + 1);
+      showNotification({
+        type: 'success',
+        title: 'Free Spin Earned!',
+        message: 'Complete two spins to unlock a free round. Enjoy your bonus spin!',
+      });
+    }
+
+    const resultPrize = 0; // ALWAYS ZERO per requirement 10
+    if (resultPrize > 0) {
+      const success = await addToIncomeWallet(
+        resultPrize,
+        `Spin wheel reward: KES ${resultPrize}`,
+        'SPIN_WIN'
+      );
+
+      if (success) {
+        showNotification({
+          type: 'success',
+          title: 'Congratulations!',
+          message: `You won KES ${resultPrize.toLocaleString()}!`,
+        });
+      }
+    } else {
+      showNotification({
+        type: 'info',
+        title: 'Try Again!',
+        message: 'Keep spinning for fun! No cash rewards available.',
+      });
+    }
+
+    // Record the spin attempt in Supabase
+    try {
+      await supabaseData.recordSpinAttempt(
+        profile?.id,
+        selectedAmount,
+        resultPrize,
+        resultPrize > 0
+      );
+    } catch (e) {
+      // Non-blocking
+      console.log('Failed to record spin attempt', e);
+    }
+
+    // Refresh user data to update balances and history
+    await loadUserData();
+
+    setIsSpinning(false);
+    spinValue.setValue(0);
+  };
   // SVG-based circular wheel segment rendering
   const renderWheelSVG = () => {
     const R = WHEEL_SIZE / 2;

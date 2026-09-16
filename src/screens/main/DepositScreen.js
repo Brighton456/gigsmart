@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   StatusBar,
   KeyboardAvoidingView,
@@ -16,8 +15,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import SafeIonicons from '../../components/SafeIonicons';
 import { useUser } from '../../context/SupabaseUserContext';
 import { useAuth } from '../../context/SupabaseAuthContext';
-import { initiateSTKPush, checkPaymentStatus } from '../../services/api';
+import {
+  initiateBrightpayPayment,
+  pollBrightpayPayment,
+  confirmDeposit,
+  generateExternalReference,
+  isValidKenyanPhone,
+} from '../../services/brightpay';
+import supabaseData from '../../services/supabaseData';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
+import PlatformAlert from '../../utils/platformAlert';
 import { useNotification } from '../../context/NotificationContext';
 import { APP_SHORT_NAME } from '../../constants/branding';
 
@@ -25,292 +32,201 @@ const DepositScreen = ({ navigation }) => {
   const { profile, refreshProfile } = useUser();
   const { showNotification } = useNotification();
   const { user } = useAuth();
-  
+
+  // Prefill the phone number from saved withdrawal details when available.
+  const savedPhone = useMemo(() => {
+    const w = profile?.withdrawalAccountDetails;
+    return typeof w?.phone === 'string' ? w.phone : '';
+  }, [profile?.withdrawalAccountDetails]);
+
   const [amount, setAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
-  const pollingIntervalRef = useRef(null);
-  const pollingTimeoutRef = useRef(null);
-  
-  // Cleanup polling interval on unmount
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lastCompleted, setLastCompleted] = useState(null);
+  const pollAbortRef = useRef(null);
+
+  // Abort any in-flight payment poll on unmount
   useEffect(() => {
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-        pollingTimeoutRef.current = null;
-      }
+      pollAbortRef.current?.abort?.();
+      pollAbortRef.current = null;
     };
   }, []);
-  
+
+  // Live "waiting for your M-Pesa PIN" timer while polling
+  useEffect(() => {
+    if (!isCheckingPayment) return undefined;
+    setElapsedSeconds(0);
+    const id = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isCheckingPayment]);
+
   // Preset amounts
   const presetAmounts = [500, 1000, 2000, 5000, 10000];
-  
+
+  // Friendly KES formatting for the summary line
+  const amountNumber = parseFloat(amount) || 0;
+  const formattedAmount = amountNumber > 0
+    ? `KES ${amountNumber.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    : '';
+  const phoneLooksValid = phoneNumber.length === 0 || isValidKenyanPhone(phoneNumber);
+
   // Handle preset amount selection
   const handlePresetAmount = (value) => {
     setAmount(value.toString());
   };
-  
-  // Poll payment status
-  const pollPaymentStatus = async (externalRef, depositAmount) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    if (pollingTimeoutRef.current) {
-      clearTimeout(pollingTimeoutRef.current);
-      pollingTimeoutRef.current = null;
-    }
 
-    setIsCheckingPayment(true);
-
-    const maxAttempts = 24; // Maximum 24 attempts (~4 minutes with 10-second intervals)
-    let attempts = 0;
-    
-    const checkStatus = async () => {
-      attempts++;
-      try {
-        const result = await checkPaymentStatus(externalRef);
-        
-        if (result.success) {
-          // Handle different response structures from server
-          let paymentStatusRaw = null;
-          let isVerified = false;
-          let latestPayload = null;
-
-          if (result.data?.payment_status) {
-            // Status from payment_status object
-            paymentStatusRaw = result.data.payment_status.status;
-            isVerified = result.data.payment_status.verified !== undefined ? result.data.payment_status.verified : result.data.verified;
-          } else if (result.data?.status) {
-            // Status from database or direct response
-            paymentStatusRaw = result.data.status;
-            isVerified = result.data.verified !== undefined ? result.data.verified : false;
-          }
-          
-          const paymentStatus = paymentStatusRaw ? paymentStatusRaw.toLowerCase() : null;
-
-          if ((paymentStatus === 'success' || paymentStatusRaw?.toLowerCase?.() === 'success') && isVerified) {
-            // Payment successful - clear interval and show success
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            if (pollingTimeoutRef.current) {
-              clearTimeout(pollingTimeoutRef.current);
-              pollingTimeoutRef.current = null;
-            }
-            
-            setIsCheckingPayment(false);
-            setIsLoading(false);
-
-            // Refresh latest balances
-            try {
-              await refreshProfile?.();
-            } catch (refreshError) {
-              console.warn('Failed to refresh profile after payment:', refreshError);
-            }
-
-            showNotification({
-              type: 'success',
-              title: 'Payment Confirmed',
-              message: 'Your payment has been verified and your account will be updated shortly.',
-            });
-            
-            Alert.alert(
-              'Payment Confirmed',
-              'Your payment has been verified. Your account will be updated automatically.',
-              [
-                { 
-                  text: 'OK', 
-                  onPress: () => navigation.goBack() 
-                }
-              ]
-            );
-            
-            // Reset form
-            setAmount('');
-            setPhoneNumber('');
-
-          } else if (['failed', 'failure', 'cancelled', 'canceled', 'cancelled_by_user', 'timeout', 'timed_out'].includes(paymentStatus)) {
-            // Payment failed - clear interval
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            if (pollingTimeoutRef.current) {
-              clearTimeout(pollingTimeoutRef.current);
-              pollingTimeoutRef.current = null;
-            }
-            
-            setIsCheckingPayment(false);
-            setIsLoading(false);
-            
-            showNotification({
-              type: 'error',
-              title: 'Payment failed',
-              message: 'The payment was not completed. Please try again.',
-            });
-            
-            Alert.alert(
-              paymentStatus === 'cancelled' || paymentStatus === 'cancelled_by_user'
-                ? 'Payment Cancelled'
-                : 'Payment Failed',
-              paymentStatus === 'cancelled' || paymentStatus === 'cancelled_by_user'
-                ? 'You cancelled the payment on your phone. Please initiate a new request if you wish to try again.'
-                : 'The payment was not completed. Please try again.',
-              [{ text: 'OK' }]
-            );
-
-          } else if (attempts >= maxAttempts) {
-            // Max attempts reached - stop polling
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            if (pollingTimeoutRef.current) {
-              clearTimeout(pollingTimeoutRef.current);
-              pollingTimeoutRef.current = null;
-            }
-            
-            setIsCheckingPayment(false);
-            setIsLoading(false);
-            
-            showNotification({
-              type: 'warning',
-              title: 'Payment status unknown',
-              message: 'We could not confirm your payment status. Please check your balance later.',
-            });
-            
-            Alert.alert(
-              'Payment Status Unknown',
-              'We could not confirm your payment status. Please check your balance later or contact support.',
-              [{ text: 'OK' }]
-            );
-
-          } else {
-            // Continue polling for any other status (e.g., 'queued', 'pending', or 'success' but not verified)
-            console.log(`⏳ Payment status is '${paymentStatus}', verification is '${isVerified}'. Continuing to poll...`);
-          }
-        } else {
-          // Error checking status
-          console.error('Error checking payment status:', result.error);
-        }
-      } catch (error) {
-        console.error('Payment status check error:', error);
-      }
-    };
-    
-    // Start polling
-    pollingIntervalRef.current = setInterval(checkStatus, 10000); // Check every 10 seconds
-    pollingTimeoutRef.current = setTimeout(() => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      setIsCheckingPayment(false);
-      setIsLoading(false);
-      showNotification({
-        type: 'warning',
-        title: 'Payment status unknown',
-        message: 'We could not confirm your payment status. Please check your balance later.',
-      });
-    }, maxAttempts * 10000 + 5000); // Safety timeout slightly beyond max attempts
-    
-    // Wait 3 seconds before the first check to allow the STK push to be initiated
-    setTimeout(checkStatus, 3000);
-  };
-  
-  // Handle deposit
+  // Handle deposit via BrightPay M-Pesa (frontend-only, poll-based)
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount to recharge.');
+      PlatformAlert.alert('Invalid Amount', 'Please enter a valid amount to recharge.');
       return;
     }
-    
-    if (!phoneNumber || phoneNumber.length < 10) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid M-Pesa phone number.');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      // Format phone number (remove any spaces and ensure it starts with correct format)
-      let formattedPhone = phoneNumber.replace(/\s+/g, '');
-      if (formattedPhone.startsWith('0')) {
-        formattedPhone = '254' + formattedPhone.substring(1);
-      } else if (!formattedPhone.startsWith('254')) {
-        formattedPhone = '254' + formattedPhone;
-      }
-      
-      const depositAmount = parseFloat(amount);
-      
-      // Initiate STK push
-      const reference = `${APP_SHORT_NAME}-Deposit-${Date.now()}`;
 
-      const result = await initiateSTKPush(
-        formattedPhone,
-        depositAmount,
-        reference,
-        user?.id || null
+    if (!isValidKenyanPhone(phoneNumber)) {
+      PlatformAlert.alert(
+        'Invalid Phone Number',
+        'Please enter a valid M-Pesa number, e.g. 07XX XXX XXX or 2547XX XXX XXX.'
       );
-      
-      if (result.success) {
-        // Get the external reference from the response
-        const externalRef = result.data?.external_reference || reference;
-        
-        if (!externalRef) {
-          setIsLoading(false);
-          Alert.alert(
-            'Payment Error',
-            'Failed to initiate payment properly. Please try again.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-        
-        // Begin polling immediately before showing confirmation
-        pollPaymentStatus(externalRef, depositAmount);
+      return;
+    }
 
-        // Show user that STK push was sent
-        Alert.alert(
-          'STK Push Sent',
-          'Please check your phone and enter your M-Pesa PIN to complete the payment.',
-          [{ text: 'OK' }]
-        );
-      } else {
+    setIsLoading(true);
+    const depositAmount = parseFloat(amount);
+
+    try {
+      // STEP 1 — Initiate the STK push
+      const init = await initiateBrightpayPayment({
+        amount: depositAmount,
+        phoneNumber,
+        externalReference: generateExternalReference('DEPOSIT'),
+      });
+
+      if (!init.success) {
         setIsLoading(false);
         showNotification({
           type: 'error',
           title: 'Deposit failed',
-          message: 'Failed to process your deposit request. Please try again later.',
+          message: init.error || 'Failed to process your deposit request. Please try again later.',
         });
-        Alert.alert(
-          'Payment Failed',
-          'Failed to process your deposit request. Please try again later.',
-          [{ text: 'OK' }]
+        PlatformAlert.alert('Payment Failed', init.error || 'Failed to process your deposit request.');
+        return;
+      }
+
+      setIsCheckingPayment(true);
+
+      PlatformAlert.alert(
+        'STK Push Sent',
+        `We have sent a payment request to ${phoneNumber}. Enter your M-Pesa PIN on your phone to complete the payment.`,
+        [{ text: 'OK' }]
+      );
+
+      // STEP 2 — Poll the payment status (3s interval, ~2 min budget)
+      const controller = new AbortController();
+      pollAbortRef.current = controller;
+      const result = await pollBrightpayPayment(init.checkoutId, {
+        signal: controller.signal,
+        onTick: (tick) => {
+          if (!tick.ok) console.warn('BrightPay status poll error:', tick.error);
+        },
+      });
+      pollAbortRef.current = null;
+
+      setIsCheckingPayment(false);
+      setIsLoading(false);
+
+      if (controller.signal.aborted) return; // User cancelled or screen unmounted mid-poll
+
+      if (result.outcome === 'COMPLETED') {
+        // Server confirms with BrightPay and credits the wallet exactly once.
+        // (No client-side balance writes — money moves only via the Edge Function.)
+        const confirm = await confirmDeposit({
+          userId: user?.id || profile?.id,
+          amount: depositAmount,
+          checkoutId: init.checkoutId,
+          externalReference: init.externalReference,
+          dedupeRef: init.dedupeRef,
+          mpesaReceipt: result.mpesaReceipt,
+        });
+
+        if (!confirm.success || (confirm.outcome !== 'CREDITED' && confirm.outcome !== 'ALREADY_PROCESSED')) {
+          console.error('Server-side crediting failed:', confirm.error);
+          showNotification({
+            type: 'warning',
+            title: 'Payment received',
+            message: 'Your payment was received but crediting failed. Contact support with your M-Pesa receipt.',
+          });
+          PlatformAlert.alert(
+            'Crediting Failed',
+            'Your payment was completed but we could not update your balance. Please contact support with your M-Pesa receipt.'
+          );
+          return;
+        }
+
+        await refreshProfile?.();
+
+        showNotification({
+          type: 'success',
+          title: 'Payment Confirmed',
+          message: `KES ${depositAmount.toLocaleString()} added to your recharge wallet.`,
+        });
+
+        // Show an in-app receipt instead of kicking the user out of the screen
+        setLastCompleted({
+          amount: depositAmount,
+          receipt: result.mpesaReceipt || null,
+          wallet: confirm.newBalance != null ? confirm.newBalance : null,
+        });
+        setAmount('');
+        setPhoneNumber('');
+      } else if (result.outcome === 'FAILED') {
+        showNotification({
+          type: 'error',
+          title: 'Payment failed',
+          message: 'The M-Pesa payment was not completed. Please try again.',
+        });
+        PlatformAlert.alert('Payment Failed', 'The M-Pesa payment was not completed. You can try again any time.');
+      } else {
+        // TIMEOUT
+        showNotification({
+          type: 'warning',
+          title: 'Payment status unknown',
+          message: 'We could not confirm your payment in time. If you were charged, your balance will update shortly.',
+        });
+        PlatformAlert.alert(
+          'Payment Status Unknown',
+          'We could not confirm the payment in time. If you entered your PIN and were charged, your balance will update shortly — otherwise nothing was charged.'
         );
       }
     } catch (error) {
+      pollAbortRef.current = null;
+      setIsCheckingPayment(false);
       setIsLoading(false);
+      console.error('Deposit error:', error);
       showNotification({
         type: 'error',
         title: 'Deposit error',
         message: 'An error occurred while processing your deposit request.',
       });
-      Alert.alert(
-        'Error',
-        'An error occurred while processing your deposit request.',
-        [{ text: 'OK' }]
-      );
+      PlatformAlert.alert('Error', 'An error occurred while processing your deposit request.');
     }
   };
-  
+
+  // User pressed Cancel on the waiting card
+  const handleCancelPolling = () => {
+    pollAbortRef.current?.abort?.();
+    pollAbortRef.current = null;
+    setIsCheckingPayment(false);
+    setIsLoading(false);
+    showNotification({
+      type: 'warning',
+      title: 'Checking cancelled',
+      message: 'If you already completed the payment, your balance will update shortly.',
+    });
+  };
+
   return (
     <LinearGradient colors={gradients.primary} style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
@@ -335,8 +251,8 @@ const DepositScreen = ({ navigation }) => {
             <View style={{ width: 24 }} />
           </View>
 
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
+          <ScrollView
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
@@ -347,7 +263,61 @@ const DepositScreen = ({ navigation }) => {
               KES {profile?.rechargeWallet?.toLocaleString() || '0'}
             </Text>
           </View>
-          
+
+          {/* Success receipt (stays on screen until user dismisses it) */}
+          {lastCompleted && (
+            <View style={styles.receiptCard}>
+              <LinearGradient
+                colors={['rgba(0,200,83,0.25)', 'rgba(0,150,136,0.15)']}
+                style={styles.receiptCardInner}
+              >
+                <SafeIonicons name="checkmark-circle" size={40} color={colors.success} />
+                <Text style={styles.receiptTitle}>Recharge Successful</Text>
+                <Text style={styles.receiptAmount}>
+                  KES {lastCompleted.amount.toLocaleString()}
+                </Text>
+                {lastCompleted.receipt ? (
+                  <Text style={styles.receiptLine}>M-Pesa receipt: {lastCompleted.receipt}</Text>
+                ) : null}
+                {lastCompleted.wallet != null ? (
+                  <Text style={styles.receiptLine}>
+                    New balance: KES {lastCompleted.wallet.toLocaleString()}
+                  </Text>
+                ) : null}
+                <TouchableOpacity
+                  style={styles.receiptDoneButton}
+                  onPress={() => setLastCompleted(null)}
+                >
+                  <Text style={styles.receiptDoneText}>Done</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          )}
+
+          {/* Waiting-for-PIN card with live elapsed time + cancel */}
+          {isCheckingPayment && (
+            <View style={styles.waitingCard}>
+              <LinearGradient
+                colors={['rgba(255,214,0,0.18)', 'rgba(255,150,0,0.10)']}
+                style={styles.waitingCardInner}
+              >
+                <View style={styles.waitingHeaderRow}>
+                  <SafeIonicons name="hourglass" size={22} color={colors.warning} />
+                  <Text style={styles.waitingTitle}>Waiting for your M-Pesa PIN…</Text>
+                </View>
+                <Text style={styles.waitingSubtext}>
+                  Check {phoneNumber || 'your phone'} and enter your PIN. We are checking every few seconds ({elapsedSeconds}s).
+                </Text>
+                <View style={styles.waitingProgressTrack}>
+                  <View style={[styles.waitingProgressBar, { width: `${Math.min(100, (elapsedSeconds / 120) * 100)}%` }]} />
+                </View>
+                <TouchableOpacity style={styles.waitingCancelButton} onPress={handleCancelPolling}>
+                  <Text style={styles.waitingCancelText}>Cancel checking</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          )}
+
           {/* Deposit Form Card */}
           <View style={styles.formContainer}>
             <LinearGradient
@@ -355,11 +325,11 @@ const DepositScreen = ({ navigation }) => {
               style={styles.formCard}
             >
               <Text style={styles.formTitle}>M-Pesa Recharge</Text>
-              
+
               {/* Preset Amounts */}
               <View style={styles.presetAmountsContainer}>
                 <Text style={styles.presetLabel}>Quick Select</Text>
-                
+
                 <View style={styles.presetGrid}>
                   {presetAmounts.map((presetAmount) => (
                     <TouchableOpacity
@@ -371,7 +341,7 @@ const DepositScreen = ({ navigation }) => {
                       onPress={() => handlePresetAmount(presetAmount)}
                       disabled={isLoading}
                     >
-                      <Text 
+                      <Text
                         style={[
                           styles.presetButtonText,
                           amount === presetAmount.toString() && styles.selectedPresetText
@@ -383,7 +353,7 @@ const DepositScreen = ({ navigation }) => {
                   ))}
                 </View>
               </View>
-              
+
               {/* Custom Amount Input */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Enter Amount</Text>
@@ -397,13 +367,19 @@ const DepositScreen = ({ navigation }) => {
                   editable={!isLoading}
                   autoFocus={false}
                 />
+                {formattedAmount ? (
+                  <Text style={styles.amountHint}>Paying {formattedAmount}</Text>
+                ) : null}
               </View>
-              
+
               {/* Phone Number Input */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>M-Pesa Phone Number</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    !phoneLooksValid && styles.inputInvalid,
+                  ]}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                   placeholder="e.g. 07XXXXXXXX"
@@ -412,8 +388,13 @@ const DepositScreen = ({ navigation }) => {
                   editable={!isLoading}
                   autoFocus={false}
                 />
+                {!phoneLooksValid ? (
+                  <Text style={styles.fieldError}>
+                    Use a Kenyan number: 07…, 01…, 2547… or 2541…
+                  </Text>
+                ) : null}
               </View>
-              
+
               {/* Payment Information */}
               <View style={styles.infoBox}>
                 <SafeIonicons name="information-circle" size={20} color={colors.blue300} />
@@ -421,12 +402,12 @@ const DepositScreen = ({ navigation }) => {
                   You will receive an STK push on your phone to complete the payment.
                 </Text>
               </View>
-              
+
               {/* Deposit Button */}
               <TouchableOpacity
                 style={[
                   styles.depositButton,
-                  (!amount || parseFloat(amount) <= 0 || !phoneNumber || isLoading) && 
+                  (!amount || parseFloat(amount) <= 0 || !phoneNumber || isLoading) &&
                   styles.disabledButton
                 ]}
                 onPress={handleDeposit}
@@ -448,11 +429,11 @@ const DepositScreen = ({ navigation }) => {
               </TouchableOpacity>
             </LinearGradient>
           </View>
-          
+
           {/* How it Works */}
           <View style={styles.howItWorksContainer}>
             <Text style={styles.sectionTitle}>How It Works</Text>
-            
+
             <View style={styles.stepsContainer}>
               <View style={styles.step}>
                 <View style={styles.stepIconContainer}>
@@ -465,7 +446,7 @@ const DepositScreen = ({ navigation }) => {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.step}>
                 <View style={styles.stepIconContainer}>
                   <Text style={styles.stepNumber}>2</Text>
@@ -477,7 +458,7 @@ const DepositScreen = ({ navigation }) => {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.step}>
                 <View style={styles.stepIconContainer}>
                   <Text style={styles.stepNumber}>3</Text>
@@ -489,7 +470,7 @@ const DepositScreen = ({ navigation }) => {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.step}>
                 <View style={styles.stepIconContainer}>
                   <Text style={styles.stepNumber}>4</Text>
@@ -508,22 +489,15 @@ const DepositScreen = ({ navigation }) => {
       </KeyboardAvoidingView>
 
       {/* Loading Overlay */}
-      {(isLoading || isCheckingPayment) && (
+      {isLoading && !isCheckingPayment && (
         <View style={styles.loadingOverlay}>
           <LinearGradient
             colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.5)']}
             style={styles.loadingContainer}
           >
             <ActivityIndicator size="large" color={colors.blue400} />
-            <Text style={styles.loadingText}>
-              {isCheckingPayment ? 'Checking Payment Status' : 'Processing Payment'}
-            </Text>
-            <Text style={styles.loadingSubtext}>
-              {isCheckingPayment 
-                ? 'Please wait while we confirm your payment...'
-                : 'Please do not close the app...'
-              }
-            </Text>
+            <Text style={styles.loadingText}>Processing Payment</Text>
+            <Text style={styles.loadingSubtext}>Please do not close the app…</Text>
           </LinearGradient>
         </View>
       )}
@@ -581,6 +555,101 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.xxl,
     fontWeight: 'bold',
     color: colors.white,
+  },
+  // Success receipt
+  receiptCard: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  receiptCardInner: {
+    borderRadius: 16,
+    padding: spacing.lg,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,200,83,0.5)',
+    ...shadows.md,
+  },
+  receiptTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: 'bold',
+    color: colors.white,
+    marginTop: spacing.sm,
+  },
+  receiptAmount: {
+    fontSize: fontSizes.xxl,
+    fontWeight: 'bold',
+    color: colors.success,
+    marginTop: spacing.xs,
+  },
+  receiptLine: {
+    fontSize: fontSizes.sm,
+    color: colors.blue200,
+    marginTop: spacing.xs,
+  },
+  receiptDoneButton: {
+    marginTop: spacing.md,
+    backgroundColor: colors.success,
+    borderRadius: 10,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+  },
+  receiptDoneText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    fontSize: fontSizes.md,
+  },
+  // Waiting card
+  waitingCard: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  waitingCardInner: {
+    borderRadius: 16,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,214,0,0.45)',
+    ...shadows.md,
+  },
+  waitingHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  waitingTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: 'bold',
+    color: colors.white,
+    marginLeft: spacing.sm,
+    flex: 1,
+  },
+  waitingSubtext: {
+    fontSize: fontSizes.sm,
+    color: colors.blue200,
+    marginBottom: spacing.sm,
+  },
+  waitingProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  waitingProgressBar: {
+    height: 6,
+    backgroundColor: colors.warning,
+    borderRadius: 3,
+  },
+  waitingCancelButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  waitingCancelText: {
+    color: colors.blue200,
+    fontSize: fontSizes.sm,
+    fontWeight: '600',
   },
   // Form styles
   formContainer: {
@@ -648,6 +717,20 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     color: colors.white,
     fontSize: fontSizes.md,
+  },
+  inputInvalid: {
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  amountHint: {
+    fontSize: fontSizes.sm,
+    color: colors.blue300,
+    marginTop: spacing.xs,
+  },
+  fieldError: {
+    fontSize: fontSizes.sm,
+    color: colors.error,
+    marginTop: spacing.xs,
   },
   infoBox: {
     flexDirection: 'row',

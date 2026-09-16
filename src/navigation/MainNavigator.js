@@ -24,6 +24,7 @@ import PersonalInfoScreen from '../screens/main/PersonalInfoScreen';
 import TeamReportsScreen from '../screens/main/TeamReportsScreen';
 import RedeemGiftsScreen from '../screens/main/RedeemGiftsScreen';
 import HelpBookScreen from '../screens/main/HelpBookScreen';
+import AdminPanelScreen from '../screens/admin/AdminPanelScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -74,6 +75,7 @@ const AccountStack = React.memo(() => (
     <Stack.Screen name="SpinWheel" component={SpinWheelScreen} />
     <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
     <Stack.Screen name="TeamReports" component={TeamReportsScreen} />
+    <Stack.Screen name="AdminPanel" component={AdminPanelScreen} />
   </Stack.Navigator>
 ));
 

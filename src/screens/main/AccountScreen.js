@@ -37,6 +37,7 @@ const AccountScreen = ({ navigation }) => {
     refreshEarningsByPeriod
   } = useUser();
   const { settings } = useApp();
+  const isAdminUser = profile?.admin_role === 'admin' || profile?.admin_role === 'super_admin';
   
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletAccountType, setWalletAccountType] = useState('');
@@ -509,6 +510,21 @@ const AccountScreen = ({ navigation }) => {
               </LinearGradient>
               <Text style={styles.featureText}>Team Reports</Text>
             </TouchableOpacity>
+            
+            {isAdminUser ? (
+            <TouchableOpacity 
+              style={styles.featureItem}
+              onPress={() => navigation.navigate('AdminPanel')}
+            >
+              <LinearGradient
+                colors={[colors.gray900, colors.black]}
+                style={styles.featureIcon}
+              >
+                <SafeIonicons name="shield-checkmark" size={24} color={colors.warning} />
+              </LinearGradient>
+              <Text style={styles.featureText}>Admin Panel</Text>
+            </TouchableOpacity>
+            ) : null}
             
             <TouchableOpacity 
               style={styles.featureItem}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   StatusBar,
   Keyboard,
@@ -17,10 +16,17 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import SafeIonicons from '../../components/SafeIonicons';
 import { useUser } from '../../context/SupabaseUserContext';
-import { initiateSTKPush, checkPaymentStatus } from '../../services/api';
+import {
+  initiateBrightpayPayment,
+  pollBrightpayPayment,
+  confirmUpgrade,
+  generateExternalReference,
+  isValidKenyanPhone,
+} from '../../services/brightpay';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
+import PlatformAlert from '../../utils/platformAlert';
 import { useNotification } from '../../context/NotificationContext';
-import { APP_NAME, APP_SHORT_NAME } from '../../constants/branding';
+import { APP_NAME } from '../../constants/branding';
 
 const UpgradeDetailScreen = ({ navigation, route }) => {
   const { level } = route.params;
@@ -31,9 +37,31 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState('details'); // 'details', 'payment', 'processing', 'complete'
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lastReceipt, setLastReceipt] = useState(null);
   const pollingIntervalRef = useRef(null);
   const pollingTimeoutRef = useRef(null);
   const hasCompletedRef = useRef(false);
+  const pollingAbortRef = useRef(null);
+
+  // Prefill the phone number from saved withdrawal details when available.
+  const savedPhone = useMemo(() => {
+    const w = profile?.withdrawalAccountDetails;
+    return typeof w?.phone === 'string' ? w.phone : '';
+  }, [profile?.withdrawalAccountDetails]);
+
+  useEffect(() => {
+    if (!phoneNumber && savedPhone) setPhoneNumber(savedPhone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPhone]);
+
+  // Live elapsed timer while waiting for the M-Pesa PIN
+  useEffect(() => {
+    if (!isCheckingPayment) return undefined;
+    setElapsedSeconds(0);
+    const id = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isCheckingPayment]);
 
   useEffect(() => {
     return () => {
@@ -45,6 +73,8 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
         clearTimeout(pollingTimeoutRef.current);
         pollingTimeoutRef.current = null;
       }
+      pollingAbortRef.current?.abort?.();
+      pollingAbortRef.current = null;
     };
   }, []);
   
@@ -61,7 +91,7 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
   // Handle upgrade with current balance
   const handleUpgradeWithBalance = () => {
     if (!canUpgradeWithBalance) {
-      Alert.alert(
+      PlatformAlert.alert(
         'Insufficient Balance',
         'Your current wallet balance is insufficient for this upgrade.',
         [{ text: 'OK' }]
@@ -90,7 +120,7 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
           title: 'Upgrade failed',
           message: 'There was an error processing your upgrade. Please try again.',
         });
-        Alert.alert(
+        PlatformAlert.alert(
           'Upgrade Failed',
           'There was an error processing your upgrade. Please try again.',
           [{ text: 'OK' }]
@@ -99,7 +129,7 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
     }, 2000);
   };
   
-  const pollPaymentStatus = async (externalRef) => {
+  const pollPaymentStatus = async (checkoutRef, { externalReference, dedupeRef } = {}) => {
     setIsCheckingPayment(true);
 
     if (pollingIntervalRef.current) {
@@ -111,211 +141,139 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
       pollingTimeoutRef.current = null;
     }
 
-    const maxAttempts = 24;
-    let attempts = 0;
-
     const finalize = async (success) => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-        pollingTimeoutRef.current = null;
-      }
       setIsCheckingPayment(false);
       setIsLoading(false);
-
       if (!success) {
         setStep('payment');
       }
     };
 
-    const checkStatus = async () => {
-      attempts++;
+    // BrightPay polling: 3s interval, ~2 min budget (abortable on unmount)
+    const controller = new AbortController();
+    pollingAbortRef.current = controller;
+    const result = await pollBrightpayPayment(checkoutRef, {
+      signal: controller.signal,
+      onTick: (tick) => {
+        if (!tick.ok) console.warn('BrightPay status poll error:', tick.error);
+      },
+    });
+    pollingAbortRef.current = null;
 
-      try {
-        const result = await checkPaymentStatus(externalRef);
-
-        if (result.success) {
-          let paymentStatusRaw = null;
-          let latestPayload = null;
-
-          if (result.data?.payment_status?.status) {
-            paymentStatusRaw = result.data.payment_status.status;
-            latestPayload = result.data.payment_status;
-          } else if (result.data?.status) {
-            paymentStatusRaw = result.data.status;
-          }
-
-          const paymentStatus = paymentStatusRaw ? paymentStatusRaw.toLowerCase() : null;
-
-          if (!hasCompletedRef.current && (paymentStatus === 'success' || paymentStatusRaw?.toLowerCase?.() === 'success')) {
-            hasCompletedRef.current = true;
-            await finalize(true);
-
-            try {
-              await refreshProfile?.();
-            } catch (refreshError) {
-              console.warn('Failed to refresh profile after upgrade payment:', refreshError);
-            }
-
-            const upgradeSuccess = await upgradeLevel(level.id, level.cost);
-
-            if (upgradeSuccess) {
-              showNotification({
-                type: 'success',
-                title: 'Upgrade successful',
-                message: `Your account is now on the ${level.name} level. Explore the new perks immediately!`,
-              });
-              setStep('complete');
-            } else {
-              showNotification({
-                type: 'error',
-                title: 'Upgrade failed',
-                message: 'There was an error processing your upgrade after payment.',
-              });
-              Alert.alert(
-                'Upgrade Failed',
-                'There was an error processing your upgrade after payment.',
-                [{ text: 'OK' }]
-              );
-            }
-            return;
-          }
-
-          if (['failed', 'failure', 'cancelled', 'canceled', 'cancelled_by_user', 'timeout', 'timed_out'].includes(paymentStatus)) {
-            await finalize(false);
-            showNotification({
-              type: 'error',
-              title: 'Payment failed',
-              message: 'The payment was not completed. Please try again.',
-            });
-            Alert.alert(
-              paymentStatus === 'cancelled' || paymentStatus === 'cancelled_by_user'
-                ? 'Payment Cancelled'
-                : 'Payment Failed',
-              paymentStatus === 'cancelled' || paymentStatus === 'cancelled_by_user'
-                ? 'You cancelled the payment on your phone. Please initiate a new request if you wish to try again.'
-                : 'The payment was not completed. Please try again.',
-              [{ text: 'OK' }]
-            );
-            return;
-          }
-
-          if (attempts >= maxAttempts) {
-            await finalize(false);
-            showNotification({
-              type: 'warning',
-              title: 'Payment status unknown',
-              message: 'We could not confirm your payment status. Please check your balance later.',
-            });
-
-            if (!latestPayload) {
-              Alert.alert(
-                'Payment Status Pending',
-                'We have not received an update from the payment provider yet. Please check your M-Pesa messages or try again later.',
-                [{ text: 'OK' }]
-              );
-            } else {
-              Alert.alert(
-                'Payment Status Unknown',
-                'We could not confirm your payment status. Please check your balance later or contact support.',
-                [{ text: 'OK' }]
-              );
-            }
-          }
-        } else {
-          console.error('Error checking upgrade payment status:', result.error);
-        }
-      } catch (error) {
-        console.error('Upgrade payment status check error:', error);
-      }
-    };
-
-    pollingIntervalRef.current = setInterval(checkStatus, 10000);
-    pollingTimeoutRef.current = setTimeout(async () => {
+    if (result.outcome === 'COMPLETED') {
       if (!hasCompletedRef.current) {
-        await finalize(false);
-        showNotification({
-          type: 'warning',
-          title: 'Payment status unknown',
-          message: 'We could not confirm your payment status. Please check your balance later.',
+        hasCompletedRef.current = true;
+        setLastReceipt(result.mpesaReceipt || null);
+        await finalize(true);
+
+        // Server re-verifies with BrightPay and applies the upgrade exactly once.
+        const confirm = await confirmUpgrade({
+          userId: profile?.id,
+          levelId: level.id,
+          checkoutId: checkoutRef,
+          externalReference,
+          dedupeRef,
+          mpesaReceipt: result.mpesaReceipt,
         });
+
+        try {
+          await refreshProfile?.();
+        } catch (refreshError) {
+          console.warn('Failed to refresh profile after upgrade payment:', refreshError);
+        }
+
+        const upgradeSuccess = confirm.success
+          && (confirm.outcome === 'APPLIED' || confirm.outcome === 'ALREADY_PROCESSED');
+
+        if (upgradeSuccess) {
+          showNotification({
+            type: 'success',
+            title: 'Upgrade successful',
+            message: `Your account is now on the ${level.name} level. Explore the new perks immediately!`,
+          });
+          setStep('complete');
+        } else {
+          showNotification({
+            type: 'error',
+            title: 'Upgrade failed',
+            message: 'There was an error processing your upgrade after payment.',
+          });
+          PlatformAlert.alert(
+            'Upgrade Failed',
+            'There was an error processing your upgrade after payment.',
+            [{ text: 'OK' }]
+          );
+        }
       }
-    }, maxAttempts * 10000 + 5000);
-
-    checkStatus();
-  };
-
-  // Handle initiating STK push for payment
-  const handleInitiatePayment = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid M-Pesa phone number.');
       return;
     }
-    
+
+    await finalize(false);
+
+    if (result.outcome === 'FAILED') {
+      showNotification({
+        type: 'error',
+        title: 'Payment failed',
+        message: 'The M-Pesa payment was not completed. Please try again.',
+      });
+      PlatformAlert.alert('Payment Failed', 'The M-Pesa payment was not completed — no money was taken. You can try again.', [{ text: 'OK' }]);
+    } else {
+      showNotification({
+        type: 'warning',
+        title: 'Payment status unknown',
+        message: 'We could not confirm your payment in time. If you were charged, your upgrade will complete shortly.',
+      });
+      PlatformAlert.alert(
+        'Payment Status Unknown',
+        'We could not confirm the payment in time. If you entered your PIN and were charged, your upgrade will complete shortly — otherwise nothing was charged.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // Handle initiating BrightPay M-Pesa payment for the upgrade
+  const handleInitiatePayment = async () => {
+    if (!isValidKenyanPhone(phoneNumber)) {
+      PlatformAlert.alert('Invalid Phone Number', 'Please enter a valid M-Pesa number, e.g. 07XX XXX XXX or 2547XX XXX XXX.');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Format phone number (remove any spaces and ensure it starts with correct format)
-      let formattedPhone = phoneNumber.replace(/\s+/g, '');
-      if (formattedPhone.startsWith('0')) {
-        formattedPhone = '254' + formattedPhone.substring(1);
-      } else if (!formattedPhone.startsWith('254')) {
-        formattedPhone = '254' + formattedPhone;
-      }
-      
-      const reference = `${APP_SHORT_NAME}-Upgrade-${level.name}-${Date.now()}`;
+      const reference = generateExternalReference(`UPGRADE-${level.name}`);
 
-      const result = await initiateSTKPush(
-        formattedPhone, 
-        requiredAmount, 
-        reference,
-        profile?.id || null
-      );
+      const result = await initiateBrightpayPayment({
+        amount: requiredAmount,
+        phoneNumber,
+        externalReference: reference,
+        purpose: 'upgrade',
+        levelId: level.id,
+      });
       
       if (result.success) {
-        const externalRef = result.data?.external_reference || reference;
-        if (!externalRef) {
-          setIsLoading(false);
-          showNotification({
-            type: 'error',
-            title: 'Payment error',
-            message: 'Failed to initiate the upgrade payment. Please try again later.',
-          });
-          Alert.alert(
-            'Payment Error',
-            'Failed to initiate the upgrade payment. Please try again later.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-
         setStep('processing');
 
-        Alert.alert(
+        PlatformAlert.alert(
           'STK Push Sent',
-          'Please check your phone and enter your M-Pesa PIN to complete the payment.',
-          [
-            {
-              text: 'OK',
-              onPress: () => pollPaymentStatus(externalRef)
-            }
-          ]
+          `We have sent a payment request to ${phoneNumber}. Enter your M-Pesa PIN on your phone to complete the payment.`,
+          [{ text: 'OK' }]
         );
 
-        pollPaymentStatus(externalRef);
+        await pollPaymentStatus(result.checkoutId, {
+          externalReference: result.externalReference,
+          dedupeRef: result.dedupeRef,
+          });
       } else {
         setIsLoading(false);
         showNotification({
           type: 'error',
           title: 'Payment failed',
-          message: 'Failed to initiate the upgrade payment. Please try again later.',
+          message: result.error || 'Failed to initiate the upgrade payment. Please try again later.',
         });
-        Alert.alert(
+        PlatformAlert.alert(
           'Payment Failed',
-          'Failed to initiate the STK push. Please try again later.',
+          result.error || 'Failed to initiate the STK push. Please try again later.',
           [{ text: 'OK' }]
         );
       }
@@ -326,7 +284,7 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
         title: 'Upgrade error',
         message: 'An unexpected error occurred while processing your payment request.',
       });
-      Alert.alert(
+      PlatformAlert.alert(
         'Error',
         'An error occurred while processing your payment request.',
         [{ text: 'OK' }]
@@ -507,13 +465,21 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Enter M-Pesa Phone Number</Text>
                 <TextInput
-                  style={styles.phoneInput}
+                  style={[
+                    styles.phoneInput,
+                    phoneNumber.length > 0 && !isValidKenyanPhone(phoneNumber) && styles.phoneInputInvalid,
+                  ]}
                   placeholder="e.g. 07XXXXXXXX"
                   placeholderTextColor={colors.gray500}
                   keyboardType="phone-pad"
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                 />
+                {phoneNumber.length > 0 && !isValidKenyanPhone(phoneNumber) ? (
+                  <Text style={styles.fieldError}>
+                    Use a Kenyan number: 07…, 01…, 2547… or 2541…
+                  </Text>
+                ) : null}
               </View>
               
               <View style={styles.paymentInfo}>
@@ -566,10 +532,19 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
           style={styles.processingCard}
         >
           <ActivityIndicator size="large" color={colors.blue400} />
-          <Text style={styles.processingTitle}>Processing Payment</Text>
+          <Text style={styles.processingTitle}>Waiting for your M-Pesa PIN…</Text>
           <Text style={styles.processingText}>
-            Please wait while we verify your payment and upgrade your account...
+            We sent a payment request to {phoneNumber || 'your phone'}. Enter your PIN to approve it — we are checking every few seconds.
           </Text>
+          <Text style={styles.processingElapsed}>{elapsedSeconds}s elapsed</Text>
+          <View style={styles.processingProgressTrack}>
+            <View
+              style={[
+                styles.processingProgressBar,
+                { width: `${Math.min(100, (elapsedSeconds / 120) * 100)}%` },
+              ]}
+            />
+          </View>
         </LinearGradient>
       </View>
     );
@@ -592,6 +567,10 @@ const UpgradeDetailScreen = ({ navigation, route }) => {
             Your account has been upgraded to the {level.name} level. 
             You can now enjoy all the benefits of your new level!
           </Text>
+          
+          {lastReceipt ? (
+            <Text style={styles.receiptNote}>M-Pesa receipt: {lastReceipt}</Text>
+          ) : null}
           
           <TouchableOpacity
             style={styles.doneButton}
@@ -780,6 +759,38 @@ const styles = StyleSheet.create({
   },
   benefitsCardInner: {
     padding: spacing.lg,
+  },
+  phoneInputInvalid: {
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  fieldError: {
+    fontSize: fontSizes.sm,
+    color: colors.error,
+    marginTop: spacing.xs,
+  },
+  processingElapsed: {
+    fontSize: fontSizes.sm,
+    color: colors.blue300,
+    marginTop: spacing.sm,
+  },
+  processingProgressTrack: {
+    width: '70%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
+  processingProgressBar: {
+    height: 6,
+    backgroundColor: colors.warning,
+    borderRadius: 3,
+  },
+  receiptNote: {
+    fontSize: fontSizes.sm,
+    color: colors.blue200,
+    marginTop: spacing.sm,
   },
   benefitRow: {
     flexDirection: 'row',

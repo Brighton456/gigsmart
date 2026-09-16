@@ -9,10 +9,13 @@ import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider, useAuth } from './src/context/SupabaseAuthContext';
 import { UserProvider } from './src/context/SupabaseUserContext';
 import { AppProvider } from './src/context/AppContext';
-import { SettingsProvider } from './src/context/SettingsContext';
+import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { TasksProvider } from './src/context/TasksContext';
 import { LevelsProvider } from './src/context/LevelsContext';
 import { NotificationProvider } from './src/context/NotificationContext';
+import { PlatformAlertHost } from './src/utils/platformAlert';
+import PwaInstallPrompt from './src/components/PwaInstallPrompt';
+import PwaTracker from './src/components/PwaTracker';
 import { SpinProvider } from './src/context/SpinContext';
 import { CheckInProvider } from './src/context/CheckInContext';
 import { BankProvider } from './src/context/BankContext';
@@ -40,6 +43,12 @@ if (typeof window !== 'undefined') {
   window.__APP_MODULE_LOADED_AT__ = new Date().toISOString();
   window.__APP_LAST_RENDER_STATE__ = 'module loaded';
 }
+
+// Gates the install prompt on settings readiness so admin toggles apply.
+const PwaGate = () => {
+  const { settings, loading: settingsLoading } = useSettings();
+  return <PwaInstallPrompt settings={settings || {}} settingsReady={!settingsLoading} />;
+};
 
 const RootNavigator = () => {
   console.log('🎯 RootNavigator render start');
@@ -266,6 +275,7 @@ const App = () => {
     <RootContainer style={styles.root}>
       {/* <LinearGradient colors={gradients.primary} style={StyleSheet.absoluteFill} pointerEvents="none" /> */}
       <NetworkStatusIndicator />
+      <PlatformAlertHost />
       <NavigationContainer ref={navigationRef}>
         <NotificationProvider>
           <AuthProvider>
@@ -277,6 +287,8 @@ const App = () => {
                       <CheckInProvider>
                         <BankProvider>
                           <AppProvider>
+                            <PwaTracker />
+                            <PwaGate />
                             <RootNavigator />
                           </AppProvider>
                         </BankProvider>

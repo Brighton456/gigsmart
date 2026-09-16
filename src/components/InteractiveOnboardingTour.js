@@ -45,6 +45,9 @@ const InteractiveOnboardingTour = ({
       showProgress={showProgress}
       scrollToFirstStep={scrollToFirstStep}
       disableOverlayClose={disableOverlayClose}
+      // Prevent react-joyride from setting `overflow: initial` on our
+      // ScrollView ancestors (it destroyed scrolling on Account/Home).
+      disableScrollParentFix
       callback={callback || handleJoyrideCallback}
       locale={locale}
       styles={styles}
