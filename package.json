@@ -1,7 +1,7 @@
 {
   "name": "gig-smart",
   "version": "2.0.0",
-  "main": "App.js",
+  "main": "index.js",
   "description": "Gig-Smart - Your Partner for Smarter Gig Earnings",
   "keywords": [
     "gig",
