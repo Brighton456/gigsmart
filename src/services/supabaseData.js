@@ -1114,17 +1114,56 @@ export const supabaseData = {
           .maybeSingle();
 
         if (userRow && userRow.referred_by) {
-          // fetch level cost to compute pct; fallback 4%
+          // Admin-configured multi-level referral bonuses on level upgrades.
+          // Chain: L1 = direct referrer, L2/L3 = their referrers (via referred_by chain).
           const { data: settings } = await this.getSystemSettings();
           const l1Pct = Number(settings?.referral_level1_percentage ?? 4);
-          const bonus = Math.max(0, (l1Pct / 100) * cost);
-          if (bonus > 0) {
-            if (userRow.is_recruit === false) {
-              await this.updateWallet(userRow.referred_by, 'income', bonus, `Referral bonus (level upgrade L1)`, 'REFERRAL_BONUS');
-              await this.logEvent(userId, 'referral_bonus_granted', 'info', { referrer_id: userRow.referred_by, amount: bonus, level: 1 });
-            } else {
-              await this.enqueueReferralBonus(userId ? userRow.referred_by : null, userId, bonus, 1);
-              await this.logEvent(userId, 'referral_bonus_enqueued', 'warning', { referrer_id: userRow.referred_by, amount: bonus, level: 1 });
+          const l2Pct = Number(settings?.referral_level2_percentage ?? 2);
+          const l3Pct = Number(settings?.referral_level3_percentage ?? 0.25);
+
+          // Resolve the full up-chain from referral_codes/uuids
+          const resolveReferrer = async (code) => {
+            if (!code) return null;
+            const { data: row } = await supabase
+              .from('users')
+              .select('id')
+              .or(`referral_code.eq.${String(code).toUpperCase()},id.eq.${code}`)
+              .maybeSingle();
+            return row?.id || null;
+          };
+
+          const l1 = await resolveReferrer(userRow.referred_by);
+          if (l1 && l1 !== userId) {
+            const l2 = await resolveReferrer(
+              (await supabase.from('users').select('referred_by').eq('id', l1).maybeSingle()).data?.referred_by
+            );
+            const l3 = l2
+              ? await resolveReferrer(
+                  (await supabase.from('users').select('referred_by').eq('id', l2).maybeSingle()).data?.referred_by
+                )
+              : null;
+
+            const chain = [
+              { level: 1, id: l1, pct: l1Pct },
+              { level: 2, id: l2 && l2 !== l1 ? l2 : null, pct: l2Pct },
+              { level: 3, id: l3 && l3 !== l1 && l3 !== l2 ? l3 : null, pct: l3Pct },
+            ];
+
+            for (const hop of chain) {
+              if (!hop.id || !(hop.pct > 0)) continue;
+              const bonus = Math.max(0, (hop.pct / 100) * cost);
+              if (bonus <= 0) continue;
+              try {
+                if (userRow.is_recruit === false) {
+                  await this.updateWallet(hop.id, 'income', bonus, `Referral bonus (level upgrade L${hop.level})`, 'REFERRAL_BONUS');
+                  await this.logEvent(userId, 'referral_bonus_granted', 'info', { referrer_id: hop.id, amount: bonus, level: hop.level });
+                } else {
+                  await this.enqueueReferralBonus(hop.id, userId, bonus, hop.level);
+                  await this.logEvent(userId, 'referral_bonus_enqueued', 'warning', { referrer_id: hop.id, amount: bonus, level: hop.level });
+                }
+              } catch (hopErr) {
+                console.warn(`Referral L${hop.level} bonus failed:`, hopErr?.message);
+              }
             }
           }
         }
@@ -1297,115 +1336,102 @@ export const supabaseData = {
 
   async createWithdrawalRequest(userId, amount, fee, netAmount, transactionId, paymentMethod, paymentDetails, userMeta) {
     try {
-      const payload = {
-        user_id: userId,
-        amount,
-        fee,
-        net_amount: netAmount,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        transaction_id: transactionId || null,
-        payment_method: paymentMethod || null,
-        payment_details: paymentDetails || null,
-        withdrawal_account_type: paymentMethod || null,
-        withdrawal_account_details: paymentDetails || null,
-        user_name: userMeta?.name || null,
-        user_phone: userMeta?.phone || null,
-        user_email: userMeta?.email || null,
-        metadata: {
+      // Atomic server-side RPC: reserves the funds (wallet can never go negative),
+      // blocks a second pending request, and inserts the row in one transaction.
+      const { data, error } = await supabase.rpc('create_withdrawal_request', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_fee: fee,
+        p_net_amount: netAmount,
+        p_payment_method: paymentMethod || null,
+        p_payment_details: paymentDetails || null,
+        p_user_name: userMeta?.name || null,
+        p_user_phone: userMeta?.phone || null,
+        p_user_email: userMeta?.email || null,
+        p_metadata: {
           current_level: userMeta?.current_level || null,
           level_name: userMeta?.level_name || null,
-        },
-      };
-      let ins = await supabase
-        .from('withdrawal_requests')
-        .insert([payload])
-        .select('id')
-        .single();
-      if (ins.error && ins.error.code === 'PGRST204') {
-        const base = {
-          user_id: userId,
-          amount,
-          fee,
-          net_amount: netAmount,
-          status: 'pending',
-          created_at: new Date().toISOString(),
           transaction_id: transactionId || null,
-          withdrawal_account_type: paymentMethod || null,
-          withdrawal_account_details: paymentDetails || null,
-        };
-        ins = await supabase
-          .from('withdrawal_requests')
-          .insert([base])
-          .select('id')
-          .single();
+        },
+      });
+      if (error) throw error;
+      if (data && data.ok === false) {
+        const friendly = {
+          insufficient_funds: 'You do not have enough balance in your income wallet for this withdrawal.',
+          pending_request_exists: 'You already have a withdrawal being processed. Please wait for it to complete first.',
+          invalid_amount: 'Invalid withdrawal amount.',
+        }[data.error] || ('Withdrawal failed: ' + (data.error || 'unknown error'));
+        return { data: null, error: { message: friendly, code: data.error } };
       }
-      if (ins.error) throw ins.error;
-      return { data: ins.data, error: null };
+      return { data, error: null };
     } catch (error) {
       console.error('Create withdrawal request error:', error);
       return { data: null, error };
     }
   },
 
-  // Admin function to approve withdrawal request and create transaction
+  // Admin approve: reserves intent only — actual debit happens atomically at payout
+  // completion inside the process_withdrawal_payout RPC (race-proof).
   async approveWithdrawalRequest(requestId) {
     try {
-      // Get the withdrawal request
-      const { data: request, error: fetchError } = await supabase
-        .from('withdrawal_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Create the actual transaction
-      const { data: transactionData, error: transactionError } = await this.updateWallet(
-        request.user_id,
-        'income',
-        -request.amount,
-        `Withdrawal: KES ${request.net_amount.toLocaleString()} (Fee: KES ${request.fee.toLocaleString()})`,
-        'WITHDRAWAL'
-      );
-
-      if (transactionError) throw transactionError;
-
-      // Update withdrawal request status and add transaction ID
-      const { error: updateError } = await supabase
-        .from('withdrawal_requests')
-        .update({
-          status: 'approved',
-          transaction_id: transactionData?.lastTransactionId || null,
-          approved_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
-
-      if (updateError) throw updateError;
-
-      return { data: { ...request, status: 'approved', transaction_id: transactionData?.lastTransactionId }, error: null };
+      const { data, error } = await supabase.rpc('process_withdrawal_payout', {
+        p_request_id: requestId,
+        p_decision: 'approved',
+        p_notes: null,
+      });
+      if (error) throw error;
+      if (data && data.ok === false) {
+        const friendly = {
+          forbidden: 'You do not have permission to process withdrawals.',
+          invalid_state: `This request was already processed (status: ${data.current}). Refresh and try again.`,
+          not_found: 'Withdrawal request not found.',
+        }[data.error] || ('Approve failed: ' + (data.error || 'unknown error'));
+        return { data: null, error: { message: friendly, code: data.error } };
+      }
+      return { data: { status: 'approved' }, error: null };
     } catch (error) {
       console.error('Approve withdrawal request error:', error);
       return { data: null, error };
     }
   },
 
-  // Admin function to reject withdrawal request
+  // Admin functions now go through the atomic, race-proof DB RPC
+  async processWithdrawalPayout(requestId, decision, notes) {
+    try {
+      const { data, error } = await supabase.rpc('process_withdrawal_payout', {
+        p_request_id: requestId,
+        p_decision: decision,
+        p_notes: notes || null,
+      });
+      if (error) throw error;
+      if (data && data.ok === false) {
+        const friendly = {
+          forbidden: 'You do not have permission to process withdrawals.',
+          invalid_state: `This request was already processed (status: ${data.current}). Refresh and try again.`,
+          insufficient_funds: 'The user\'s income wallet no longer covers this withdrawal.',
+          not_found: 'Withdrawal request not found.',
+          bad_decision: 'Unknown action.',
+        }[data.error] || ('Action failed: ' + (data.error || 'unknown error'));
+        return { data: null, error: { message: friendly, code: data.error } };
+      }
+      return { data, error: null };
+    } catch (error) {
+      console.error('Process withdrawal payout error:', error);
+      return { data: null, error };
+    }
+  },
+
   async rejectWithdrawalRequest(requestId, reason) {
     try {
-      const { error } = await supabase
-        .from('withdrawal_requests')
-        .update({
-          status: 'rejected',
-          rejection_reason: reason || 'Rejected by admin',
-          rejected_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
-
+      const { data, error } = await supabase.rpc('process_withdrawal_payout', {
+        p_request_id: requestId,
+        p_decision: 'rejected',
+        p_notes: reason || null,
+      });
       if (error) throw error;
-
+      if (data && data.ok === false) {
+        return { data: null, error: { message: 'Reject failed: ' + (data.error || 'unknown error') } };
+      }
       return { data: { status: 'rejected' }, error: null };
     } catch (error) {
       console.error('Reject withdrawal request error:', error);

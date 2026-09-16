@@ -240,17 +240,23 @@ const adminService = {
         : 'withdrawals.fail';
       if (!can(profile, priv)) return { data: null, error: { message: `Missing privilege: ${priv}` } };
 
-      const { data, error } = await supabase
-        .from('withdrawal_requests')
-        .update({
-          status: decision,
-          processed_at: new Date().toISOString(),
-          processed_by: adminEmail || user.email,
-          admin_notes: notes || null,
-        })
-        .eq('id', requestId)
-        .select('*')
-        .single();
+      // Atomic DB RPC: reserves/refunds funds and enforces the state machine
+      // (no double-processing, no negative balances) regardless of concurrent clicks.
+      const { data, error } = await supabase.rpc('process_withdrawal_payout', {
+        p_request_id: requestId,
+        p_decision: decision,
+        p_admin_email: adminEmail || user.email || null,
+        p_notes: notes || null,
+      });
+      if (!error && data && data.ok === false) {
+        const friendly = {
+          forbidden: 'You do not have permission to process withdrawals.',
+          invalid_state: `Already processed (status: ${data.current}). Refresh the list.`,
+          insufficient_funds: 'User balance no longer covers this payout.',
+          not_found: 'Withdrawal request not found.',
+        }[data.error] || ('Action failed: ' + (data.error || 'unknown'));
+        return { data: null, error: { message: friendly } };
+      }
       if (!error) {
         await audit(`withdrawal.${decision}`, {
           targetType: 'withdrawal', targetId: requestId,

@@ -638,7 +638,8 @@ export const UserProvider = ({ children }) => {
     try {
       const netAmount = amount - fee;
       
-      // Check if user has sufficient balance
+      // Fast client-side pre-check using possibly stale data — the server RPC
+      // re-validates the balance atomically (never allows a negative wallet).
       if ((profile?.income_wallet || 0) < amount) {
         showNotification({
           type: 'error',
@@ -648,9 +649,9 @@ export const UserProvider = ({ children }) => {
         return false;
       }
       
-      // Create withdrawal request (don't create transaction yet)
+      // Atomic server-side request creation: reserves funds, blocks double submits
       try {
-        await supabaseData.createWithdrawalRequest(
+        const result = await supabaseData.createWithdrawalRequest(
           user.id,
           amount,
           fee,
@@ -667,14 +668,24 @@ export const UserProvider = ({ children }) => {
           }
         );
         
+        if (result.error) {
+          console.error('Create withdrawal request error:', result.error);
+          showNotification({
+            type: 'error',
+            title: 'Withdrawal Failed',
+            message: result.error.message || 'Failed to submit withdrawal request. Please try again.',
+          });
+          return false;
+        }
+        
         showNotification({
           type: 'success',
           title: 'Withdrawal Request Submitted',
           message: `Your withdrawal request for KES ${netAmount.toLocaleString()} has been submitted for approval.`,
         });
         
-        // Refresh withdrawal requests to show the new request
-        await fetchWithdrawalRequests();
+        // Refresh requests AND profile so the reserved balance shows immediately
+        await Promise.all([fetchWithdrawalRequests(), fetchProfile()]);
         
       } catch (e) {
         console.error('Create withdrawal request error:', e);

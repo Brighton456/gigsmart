@@ -87,11 +87,22 @@ const WithdrawalScreen = ({ navigation }) => {
   const balance = profile?.incomeWallet ?? profile?.income_wallet ?? 0;
 
   const handleWithdraw = () => {
+    // Double-press guard: never allow a second submission while one is in flight
+    if (isLoading) return;
+
     if (!selectedAmount) {
       Alert.alert('Error', 'Please select a withdrawal amount.');
       return;
     }
-    
+
+    // Only one pending request at a time (also enforced atomically in the DB)
+    if ((withdrawalRequests || []).some((r) => r.status === 'pending')) {
+      Alert.alert(
+        'Withdrawal In Progress',
+        'You already have a withdrawal being processed. Please wait for it to complete before requesting another.'
+      );
+      return;
+    }
     // Check if wallet is set
     if (!profile?.withdrawalAccountType || !profile?.withdrawalAccountDetails) {
       Alert.alert(
@@ -132,21 +143,26 @@ const WithdrawalScreen = ({ navigation }) => {
     
     if (Platform.OS === 'web') {
       (async () => {
-        const success = await withdraw(selectedAmount, fee);
-        if (success) {
-          showNotification({
-            type: 'success',
-            title: 'Withdrawal Request Submitted',
-            message: `KES ${amountToReceive.toLocaleString()} withdrawal request submitted for approval.`,
-          });
-          setSelectedAmount(null);
-          navigation.goBack();
-        } else {
-          showNotification({
-            type: 'error',
-            title: 'Withdrawal Failed',
-            message: 'There was an error processing your withdrawal request.',
-          });
+        setIsLoading(true);
+        try {
+          const success = await withdraw(selectedAmount, fee);
+          if (success) {
+            showNotification({
+              type: 'success',
+              title: 'Withdrawal Request Submitted',
+              message: `KES ${amountToReceive.toLocaleString()} withdrawal request submitted for approval.`,
+            });
+            setSelectedAmount(null);
+            navigation.goBack();
+          } else {
+            showNotification({
+              type: 'error',
+              title: 'Withdrawal Failed',
+              message: 'There was an error processing your withdrawal request.',
+            });
+          }
+        } finally {
+          setIsLoading(false);
         }
       })();
       return;
@@ -160,21 +176,26 @@ const WithdrawalScreen = ({ navigation }) => {
         { 
           text: 'Confirm', 
           onPress: async () => {
-            const success = await withdraw(selectedAmount, fee);
-            if (success) {
-              showNotification({
-                type: 'success',
-                title: 'Withdrawal Request Submitted',
-                message: `KES ${amountToReceive.toLocaleString()} withdrawal request submitted for approval.`,
-              });
-              setSelectedAmount(null);
-              navigation.goBack();
-            } else {
-              showNotification({
-                type: 'error',
-                title: 'Withdrawal Failed',
-                message: 'There was an error processing your withdrawal request.',
-              });
+            setIsLoading(true);
+            try {
+              const success = await withdraw(selectedAmount, fee);
+              if (success) {
+                showNotification({
+                  type: 'success',
+                  title: 'Withdrawal Request Submitted',
+                  message: `KES ${amountToReceive.toLocaleString()} withdrawal request submitted for approval.`,
+                });
+                setSelectedAmount(null);
+                navigation.goBack();
+              } else {
+                showNotification({
+                  type: 'error',
+                  title: 'Withdrawal Failed',
+                  message: 'There was an error processing your withdrawal request.',
+                });
+              }
+            } finally {
+              setIsLoading(false);
             }
           }
         }

@@ -16,6 +16,7 @@ import Svg, { Path, G, Circle, Text as SvgText, TSpan, Defs, LinearGradient as S
 import { colors, spacing, fontSizes, shadows } from '../constants/theme';
 import supabaseData from '../services/supabaseData';
 import { useUser } from '../context/SupabaseUserContext';
+import { useSettings } from '../context/SettingsContext';
 
 const { width, height } = Dimensions.get('window');
 // Clamp wheel size by width and height so it fits smaller screens without cropping
@@ -40,6 +41,12 @@ const lightenColor = (hex, intensity = 0.25) => {
 
 const SpinWheel = ({ visible, onClose }) => {
   const { profile, addToIncomeWallet, loadUserData } = useUser();
+  const { getNumberSetting } = useSettings();
+  // Admin-configurable payout chance (Platform Config → spin_win_rate_percent).
+  // Default 0 = users NEVER win — matches current product rule.
+  const spinWinRate = Math.max(0, Math.min(100, getNumberSetting('spin_win_rate_percent', 0)));
+  const spinMinBet = getNumberSetting('spin_min_amount', 20);
+  const spinMaxBet = getNumberSetting('spin_max_amount', 5000);
   const showNotification = useCallback((payload) => {
     console.log('🔔 Spin notification:', payload);
   }, []);
@@ -128,6 +135,9 @@ const SpinWheel = ({ visible, onClose }) => {
   };
 
   const handleSpin = async () => {
+    // Double-press / re-entry guard
+    if (isSpinning) return;
+
     if (!canSpin()) {
       showNotification({
         type: 'error',
@@ -139,13 +149,22 @@ const SpinWheel = ({ visible, onClose }) => {
 
     setIsSpinning(true);
 
-    // Deduct spin cost (unless free spin)
+    // Deduct spin cost (unless free spin) — abort the spin if the debit fails
     if (freeSpins === 0) {
-      await addToIncomeWallet(
+      const debited = await addToIncomeWallet(
         -selectedAmount,
         `Spin wheel bet: KES ${selectedAmount}`,
         'SPIN_BET'
       );
+      if (debited === false) {
+        setIsSpinning(false);
+        showNotification({
+          type: 'error',
+          title: 'Spin Failed',
+          message: 'We could not place your bet. Please check your balance and try again.',
+        });
+        return;
+      }
     } else {
       setFreeSpins(prev => prev - 1);
     }
@@ -210,8 +229,13 @@ const SpinWheel = ({ visible, onClose }) => {
       });
     }
 
-    const resultPrize = 0; // ALWAYS ZERO per requirement 10
-    if (resultPrize > 0) {
+    // Admin-controlled win chance: roll once per PAID spin. Free spins never win.
+    // spin_win_rate_percent = 0 (default) means users never win — pure fun mode.
+    const paidSpin = freeSpins === 0;
+    const winRoll = Math.random() * 100;
+    const isWinner = paidSpin && winRoll < spinWinRate;
+    const resultPrize = isWinner ? selectedAmount : 0; // win = stake returned as prize
+    if (isWinner) {
       const success = await addToIncomeWallet(
         resultPrize,
         `Spin wheel reward: KES ${resultPrize}`,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,43 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  ScrollView
+  ScrollView,
+  RefreshControl
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import SafeIonicons from '../../components/SafeIonicons';
 import { useUser } from '../../context/SupabaseUserContext';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
 
-const HistoryScreen = ({ navigation }) => {
-  const { profile, transactions } = useUser();
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'deposits', 'withdrawals', 'earnings', 'investments'
+const PAGE_SIZE = 30;
 
-  const allTransactions = Array.isArray(transactions) ? transactions : [];
+const HistoryScreen = ({ navigation }) => {
+  const { profile, transactions, loadUserData } = useUser();
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'deposits', 'withdrawals', 'earnings', 'investments'
+  const [refreshing, setRefreshing] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  // Dedupe by id — realtime updates can prepend a row that already exists,
+  // and duplicate keys make FlatList render unreliably (entries "vanish").
+  const seen = new Set();
+  const allTransactions = (Array.isArray(transactions) ? transactions : [])
+    .filter((t) => {
+      if (!t || t.id == null || seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+
+  // Pull-to-refresh refetches the FULL history (unbounded) so nothing is lost
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (typeof loadUserData === 'function') await loadUserData();
+    } catch (e) {
+      console.warn('History refresh failed:', e?.message);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadUserData]);
   
   // Filter transactions based on active tab
   const getFilteredTransactions = () => {
@@ -44,6 +69,7 @@ const HistoryScreen = ({ navigation }) => {
   };
   
   const filteredTransactions = getFilteredTransactions();
+  const visibleTransactions = filteredTransactions.slice(0, visibleCount);
   
   // Tab item component
   const TabItem = ({ name, label, icon }) => {
@@ -174,13 +200,23 @@ const HistoryScreen = ({ navigation }) => {
         </ScrollableTabs>
       </View>
       
-      {/* Transaction List */}
+      {/* Transaction List — full history, paginated rendering with infinite scroll */}
       <FlatList
-        data={filteredTransactions}
+        data={visibleTransactions}
         renderItem={renderTransactionItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, idx) => `${item.id ?? idx}`}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={<EmptyState />}
+        onEndReached={() => setVisibleCount((c) => c + 30)}
+        onEndReachedThreshold={0.4}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.white}
+            titleColor={colors.white}
+          />
+        }
         showsVerticalScrollIndicator={false}
       />
     </LinearGradient>

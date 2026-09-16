@@ -372,6 +372,9 @@ export const PlatformConfigSection = ({ can, refreshKey }) => {
     ] },
     { group: 'Tasks & Spin', icon: 'checkbox', items: [
       { key: 'task_reward_multiplier', label: 'Task reward multiplier', numeric: true },
+      { key: 'spin_win_rate_percent', label: 'Spin win chance (%) — 0 = never win', numeric: true },
+      { key: 'spin_min_amount', label: 'Spin min bet (KES)', numeric: true },
+      { key: 'spin_max_amount', label: 'Spin max bet (KES)', numeric: true },
       { key: 'spin_cost', label: 'Spin cost (KES)', numeric: true },
       { key: 'spin_max_daily', label: 'Max daily spins', numeric: true },
       { key: 'spin_enabled', label: 'Spins enabled (true/false)' },

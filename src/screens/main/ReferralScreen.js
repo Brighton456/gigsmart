@@ -16,14 +16,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import SafeIonicons from '../../components/SafeIonicons';
 import { useAuth } from '../../context/SupabaseAuthContext';
 import { useUser } from '../../context/SupabaseUserContext';
+import { useSettings } from '../../context/SettingsContext';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
 import { APP_NAME, APP_URL, APP_SHORT_NAME } from '../../constants/branding';
 import LazyAsset from '../../components/LazyAsset';
 
 const ReferralScreen = ({ navigation }) => {
   const { user } = useAuth();
-  const { profile } = useUser();
+  const { profile, referrals } = useUser();
+  const { getNumberSetting } = useSettings();
   const [selectedTemplate, setSelectedTemplate] = useState(0);
+  
+  // Admin-configured commission rates (Platform Config → Referrals)
+  const l1Pct = getNumberSetting('referral_level1_percentage', 4);
+  const l2Pct = getNumberSetting('referral_level2_percentage', 2);
+  const l3Pct = getNumberSetting('referral_level3_percentage', 0.25);
   
   // Use referral_code from profile per requirement 3
   const referralCode = profile?.referral_code || user?.id || 'user123';
@@ -54,11 +61,12 @@ const ReferralScreen = ({ navigation }) => {
     }
   };
   
-  // Commission structure
+  // Commission structure — percentages of the referred user's level package,
+  // paid from the admin-configured rates (live, not hardcoded amounts)
   const commissionStructure = [
-    { level: 'Level 1 (Direct)', amount: 300, description: 'For every direct referral that activates their account' },
-    { level: 'Level 2 (Indirect)', amount: 100, description: 'When your direct referrals bring in new users' },
-    { level: 'Level 3 (Network)', amount: 50, description: 'From the extended network of your referrals' },
+    { level: 'Level 1 (Direct)', pct: l1Pct, description: 'Earned when your direct referral upgrades their level' },
+    { level: 'Level 2 (Indirect)', pct: l2Pct, description: 'From upgrades made by users your referrals brought in' },
+    { level: 'Level 3 (Network)', pct: l3Pct, description: 'From the extended network of your referrals' },
   ];
   
   return (
@@ -203,7 +211,7 @@ const ReferralScreen = ({ navigation }) => {
                   
                   <Text style={styles.commissionLevel}>{item.level}</Text>
                   
-                  <Text style={styles.commissionAmount}>KES {item.amount}</Text>
+                  <Text style={styles.commissionAmount}>{item.pct}%</Text>
                 </View>
                 
                 <Text style={styles.commissionDescription}>{item.description}</Text>
