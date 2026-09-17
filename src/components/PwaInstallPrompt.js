@@ -28,6 +28,9 @@ const SESSION_KEY = 'gigs_pwa_session_id';
 const INSTALLED_KEY = 'gigs_pwa_installed';
 const DISMISS_KEY = 'gigs_pwa_dismissed_at';
 
+/** Default delay before the install card appears (admin can override via settings). */
+const DEFAULT_PROMPT_DELAY_SECONDS = 20;
+
 const getSessionId = () => {
   try {
     let id = sessionStorage.getItem(SESSION_KEY);
@@ -41,12 +44,12 @@ const getSessionId = () => {
   }
 };
 
-const PwaInstallPrompt = ({ settings, settingsReady }) => {
+const PwaInstallPrompt = ({ settings, settingsReady, isAuthenticated = false, isWeb = false }) => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState('unknown');
   const [isStandalone, setIsStandalone] = useState(false);
-  const [delaySecs, setDelaySecs] = useState(5);
+  const [delaySecs, setDelaySecs] = useState(DEFAULT_PROMPT_DELAY_SECONDS);
   const [iosInstructions, setIosInstructions] = useState(false);
   const [promptUnavailable, setPromptUnavailable] = useState(false);
   const shownRef = useRef(false);
@@ -97,10 +100,14 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
     };
   }, []);
 
-  // Show the prompt once per session after the configured delay.
+  // Show the prompt once per session after the configured delay — and only
+  // for signed-in users on the web (browsers), never for guests on the
+  // login/signup screens or inside the installed app.
   useEffect(() => {
+    if (!isWeb) return undefined; // native platforms: nothing to install
     if (typeof window !== 'undefined' && window.__GIGS_IS_APP__ === true) return undefined; // inside installed app
     if (!enabled || !settingsReady || isStandalone) return undefined;
+    if (!isAuthenticated) return undefined; // wait until signed in
     if (platform === 'ios' && !iosBanner) return undefined;
 
     let dismissedThisSession = false;
@@ -116,7 +123,7 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
       setVisible(true);
     }, Math.max(0, delaySecs) * 1000);
     return () => clearTimeout(t);
-  }, [enabled, settingsReady, isStandalone, platform, iosBanner, delaySecs, everyVisit, deferredPrompt]);
+  }, [enabled, settingsReady, isStandalone, platform, iosBanner, delaySecs, everyVisit, deferredPrompt, isAuthenticated, isWeb]);
 
   const dismiss = () => {
     setVisible(false);

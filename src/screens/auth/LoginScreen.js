@@ -4,7 +4,6 @@ import {
   Text, 
   TextInput, 
   TouchableOpacity,
-  Alert,
   StatusBar,
   Platform,
   StyleSheet, 
@@ -18,6 +17,7 @@ import SafeIonicons from '../../components/SafeIonicons';
 import { useAuth } from '../../context/SupabaseAuthContext';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
 import { APP_NAME, TAGLINE } from '../../constants/branding';
+import { getAuthErrorInfo } from '../../utils/authErrors';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -25,6 +25,7 @@ const LoginScreen = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState(null);
   
   const { signIn } = useAuth();
   
@@ -48,16 +49,30 @@ const LoginScreen = ({ navigation }) => {
   };
   
   const handleLogin = async () => {
+    setServerError(null);
     if (!validateForm()) return;
     
     setIsLoading(true);
     try {
       await signIn({ email, password });
     } catch (error) {
-      Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
+      const info = getAuthErrorInfo(error, 'Login Failed');
+      setServerError({ message: info.message, field: info.field });
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const updateEmail = (text) => {
+    setEmail(text);
+    if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
+    if (serverError) setServerError(null);
+  };
+  
+  const updatePassword = (text) => {
+    setPassword(text);
+    if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+    if (serverError) setServerError(null);
   };
   
   const togglePasswordVisibility = () => {
@@ -80,7 +95,14 @@ const LoginScreen = ({ navigation }) => {
             <Text style={styles.welcomeText}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
             
-            <View style={styles.inputContainer}>
+            {serverError && (
+              <View style={styles.errorBanner}>
+                <SafeIonicons name="alert-circle" size={18} color={colors.error} />
+                <Text style={styles.errorBannerText}>{serverError.message}</Text>
+              </View>
+            )}
+            
+            <View style={[styles.inputContainer, (errors.email || serverError?.field === 'email') && styles.inputContainerError]}>
               <SafeIonicons name="mail-outline" size={20} color={colors.blue400} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
@@ -89,12 +111,12 @@ const LoginScreen = ({ navigation }) => {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={updateEmail}
               />
             </View>
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, (errors.password || serverError?.field === 'password') && styles.inputContainerError]}>
               <SafeIonicons name="lock-closed-outline" size={20} color={colors.blue400} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
@@ -102,7 +124,7 @@ const LoginScreen = ({ navigation }) => {
                 placeholderTextColor={colors.gray500}
                 secureTextEntry={!isPasswordVisible}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={updatePassword}
               />
               <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeIcon}>
                 <SafeIonicons 
@@ -113,6 +135,9 @@ const LoginScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+            {serverError?.field === 'password' && !errors.password && (
+              <Text style={styles.errorText}>{serverError.message}</Text>
+            )}
             
             <TouchableOpacity 
               style={styles.forgotPasswordContainer}
@@ -216,6 +241,28 @@ const styles = StyleSheet.create({
     marginTop: -spacing.sm,
     marginBottom: spacing.sm,
     marginLeft: spacing.sm,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.35)',
+    borderRadius: 10,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: colors.error,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
+  },
+  inputContainerError: {
+    borderWidth: 1,
+    borderColor: colors.error,
   },
   forgotPasswordContainer: {
     alignItems: 'flex-end',

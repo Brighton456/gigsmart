@@ -25,7 +25,7 @@ import NotificationBanner from '../../components/NotificationBanner';
 
 const { width } = Dimensions.get('window');
 
-const TaskScreen = React.memo(() => {
+const TaskScreen = React.memo(({ navigation }) => {
   const { taskApps = [], installingApps = [], completedApps = [], installApp, updateInstallProgress } = useApp();
   const { profile, currentLevel, completeTask, levels: userLevels = [] } = useUser();
   const { getActiveNotifications, dismissNotification } = useNotifications();
@@ -64,15 +64,23 @@ const TaskScreen = React.memo(() => {
   const remainingTasks = Math.max(maxTasks - tasksCompleted, 0);
   const canPerformTasks = !isRecruit && isTaskDay;
   const canStartNewTask = canPerformTasks && !taskLimitReached && remainingTasks > 0;
+  // First upgrade option above the user's current level (for upsell messaging)
+  const nextLevel = useMemo(
+    () => [...userLevels].sort((a, b) => (a.id || 0) - (b.id || 0)).find(l => (l?.id || 0) > currentLevelId && !l?.isLocked),
+    [userLevels, currentLevelId]
+  );
   const taskStatus = useMemo(() => {
     if (isRecruit) {
-      return { type: 'info', message: 'Upgrade to start performing tasks.' };
+      return {
+        type: 'info',
+        message: 'Welcome! You are on the free recruit plan. Recharge to activate a level and unlock daily paid tasks.',
+      };
     }
     if (!isTaskDay) {
-      return { type: 'warning', message: 'Tasks are only performed Monday to Friday.' };
+      return { type: 'warning', message: 'Tasks run Monday to Friday. Come back tomorrow at midnight for a fresh set!' };
     }
     if (taskLimitReached) {
-      return { type: 'success', message: "You've completed all your daily tasks!" };
+      return { type: 'success', message: "You've completed all your tasks for today — see you tomorrow! 💪" };
     }
     return {
       type: 'info',
@@ -185,7 +193,10 @@ const TaskScreen = React.memo(() => {
     }
 
     if (isRecruit) {
-      Alert.alert('Upgrade Required', 'Upgrade to start performing tasks.');
+      Alert.alert(
+        'Activate Your Level',
+        'Recharge your account and activate a level to start earning from daily tasks. Tap OK to view upgrade options.'
+      );
       return;
     }
 
@@ -389,21 +400,121 @@ const TaskScreen = React.memo(() => {
           )}
         </View>
         
-        {visibleTaskApps.length === 0 ? (
+        {isRecruit ? (
+          // ── NEW RECRUIT ONBOARDING ──────────────────────────────
+          // Fresh recruits see a clear step-by-step guide instead of a
+          // confusing "no tasks" message. Tells them exactly what to do.
+          <View style={styles.emptyStoreContainer}>
+            <LinearGradient
+              colors={['rgba(59,130,246,0.25)', 'rgba(59,130,246,0.08)']}
+              style={styles.emptyStoreCard}
+            >
+              <SafeIonicons name="rocket" size={52} color={colors.primary} />
+              <Text style={styles.recruitTitle}>Start Earning in 3 Simple Steps</Text>
+              <Text style={styles.recruitSubtitle}>
+                You're all set up — just activate a level to unlock your daily paid tasks.
+              </Text>
+
+              <View style={styles.stepCard}>
+                <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>1</Text></View>
+                <View style={styles.stepBody}>
+                  <Text style={styles.stepTitle}>Recharge your account</Text>
+                  <Text style={styles.stepDesc}>Add funds from the Recharge page — from as low as KES {nextLevel ? nextLevel.cost?.toLocaleString?.() || nextLevel.cost : '500'}.</Text>
+                </View>
+              </View>
+              <View style={styles.stepCard}>
+                <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>2</Text></View>
+                <View style={styles.stepBody}>
+                  <Text style={styles.stepTitle}>Activate a level</Text>
+                  <Text style={styles.stepDesc}>Choose your level on the Upgrade page to unlock {nextLevel ? nextLevel.tasks : 'daily'} tasks per day.</Text>
+                </View>
+              </View>
+              <View style={styles.stepCard}>
+                <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>3</Text></View>
+                <View style={styles.stepBody}>
+                  <Text style={styles.stepTitle}>Install & earn daily</Text>
+                  <Text style={styles.stepDesc}>Install the day's apps and earn KES {nextLevel ? (nextLevel.dailyEarnings || nextLevel.earningsPerTask || 0).toLocaleString?.() || nextLevel.dailyEarnings || nextLevel.earningsPerTask : '—'} per day, straight to your income wallet.</Text>
+                </View>
+              </View>
+
+              {nextLevel && (
+                <TouchableOpacity
+                  style={styles.recruitCta}
+                  onPress={() => navigation?.navigate?.('Upgrade', { screen: 'UpgradeMain' })}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={[colors.primary, colors.secondary || colors.primary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.recruitCtaGradient}
+                  >
+                    <SafeIonicons name="trending-up" size={18} color={colors.white} />
+                    <Text style={styles.recruitCtaText}>
+                      Activate {nextLevel.name} — KES {(nextLevel.cost || 0).toLocaleString()}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.recruitHint}>
+                Higher levels = more daily tasks = more earnings. The more you put in, the more you take out. 🚀
+              </Text>
+            </LinearGradient>
+          </View>
+        ) : !isTaskDay || taskLimitReached ? (
+          // ── DONE FOR TODAY / WRONG DAY — SWEET UPSELL ────────────
           <View style={styles.emptyStoreContainer}>
             <LinearGradient
               colors={['rgba(40,167,69,0.2)', 'rgba(40,167,69,0.1)']}
               style={styles.emptyStoreCard}
             >
-              <SafeIonicons name="checkmark-circle" size={60} color={colors.success} />
-              <Text style={styles.emptyStoreTitle}>No Tasks Available</Text>
+              <SafeIonicons name={taskLimitReached ? 'checkmark-circle' : 'sunny'} size={60} color={colors.success} />
+              <Text style={styles.emptyStoreTitle}>
+                {taskLimitReached ? "All Done for Today!" : 'New Tasks Tomorrow'}
+              </Text>
               <Text style={styles.emptyStoreText}>
-                {taskStatus.message}
+                {taskLimitReached
+                  ? "Great work! You've completed every task on your level today."
+                  : 'Tasks run Monday to Friday. Fresh tasks drop at midnight.'}
               </Text>
-              <Text style={styles.emptyStoreSubtext}>
-                New apps will be available tomorrow at midnight.
+
+              {nextLevel && (
+                <LinearGradient
+                  colors={['rgba(255,215,0,0.22)', 'rgba(255,215,0,0.08)']}
+                  style={styles.upsellCard}
+                >
+                  <SafeIonicons name="gift" size={22} color={colors.amber} />
+                  <View style={styles.upsellBody}>
+                    <Text style={styles.upsellTitle}>Want more tomorrow?</Text>
+                    <Text style={styles.upsellText}>
+                      Upgrade to <Text style={{ fontWeight: 'bold' }}>{nextLevel.name}</Text> and earn up to{' '}
+                      <Text style={{ fontWeight: 'bold' }}>KES {(nextLevel.dailyEarnings || 0).toLocaleString()}</Text>{' '}
+                      daily with <Text style={{ fontWeight: 'bold' }}>{nextLevel.tasks} tasks</Text>.
+                    </Text>
+                  </View>
+                </LinearGradient>
+              )}
+
+              <View style={styles.nextRefreshContainer}>
+                <SafeIonicons name="time-outline" size={16} color={colors.blue300} />
+                <Text style={styles.nextRefreshText}>
+                  Next refresh: {new Date(Date.now() + 86400000).toLocaleDateString()}
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        ) : visibleTaskApps.length === 0 ? (
+          // Rare fallback: it's a task day, tasks remain, but the catalog is empty.
+          <View style={styles.emptyStoreContainer}>
+            <LinearGradient
+              colors={['rgba(40,167,69,0.2)', 'rgba(40,167,69,0.1)']}
+              style={styles.emptyStoreCard}
+            >
+              <SafeIonicons name="sparkles" size={60} color={colors.success} />
+              <Text style={styles.emptyStoreTitle}>Tasks Loading</Text>
+              <Text style={styles.emptyStoreText}>
+                Hang tight — today's apps are on the way. Pull to refresh in a moment.
               </Text>
-              
               <View style={styles.nextRefreshContainer}>
                 <SafeIonicons name="time-outline" size={16} color={colors.blue300} />
                 <Text style={styles.nextRefreshText}>
@@ -763,6 +874,111 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.xs,
     color: colors.blue300,
     marginLeft: 4,
+  },
+  // Recruit onboarding card
+  recruitTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: 'bold',
+    color: colors.white,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  recruitSubtitle: {
+    fontSize: fontSizes.sm,
+    color: colors.blue200,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 20,
+  },
+  stepCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    alignSelf: 'stretch',
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  stepBadgeText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    fontSize: fontSizes.sm,
+  },
+  stepBody: {
+    flex: 1,
+  },
+  stepTitle: {
+    color: colors.white,
+    fontWeight: 'bold',
+    fontSize: fontSizes.md,
+    marginBottom: 2,
+  },
+  stepDesc: {
+    color: colors.blue200,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
+  },
+  recruitCta: {
+    alignSelf: 'stretch',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadows.md,
+  },
+  recruitCtaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  recruitCtaText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    fontSize: fontSizes.md,
+    marginLeft: spacing.xs,
+  },
+  recruitHint: {
+    fontSize: fontSizes.xs,
+    color: colors.blue300,
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+  // Upgrade upsell card (shown when tasks are done / weekend)
+  upsellCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.35)',
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  upsellBody: {
+    flex: 1,
+    marginLeft: spacing.sm,
+  },
+  upsellTitle: {
+    color: colors.amber,
+    fontWeight: 'bold',
+    fontSize: fontSizes.md,
+    marginBottom: 2,
+  },
+  upsellText: {
+    color: colors.white,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
   },
   // Removed old app item styles as they're now in AppStoreCard component
   // Empty container styles moved to emptyStoreContainer above

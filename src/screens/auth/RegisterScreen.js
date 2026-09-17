@@ -10,13 +10,13 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import SafeIonicons from '../../components/SafeIonicons';
 import { useAuth } from '../../context/SupabaseAuthContext';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
 import { APP_SHORT_NAME } from '../../constants/branding';
+import { getAuthErrorInfo } from '../../utils/authErrors';
 
 const generateSecurityCode = () => Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -35,6 +35,8 @@ const RegisterScreen = ({ navigation, route }) => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState(null);
+  const [registeredEmail, setRegisteredEmail] = useState(null); // set when email confirmation is required
 
   const { signUp } = useAuth();
 
@@ -80,25 +82,42 @@ const RegisterScreen = ({ navigation, route }) => {
   };
 
   const handleRegister = async () => {
+    setServerError(null);
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
     try {
-      await signUp({
+      const result = await signUp({
         email,
         phone,
         password,
         referralCode: referrer,
         securityCode,
       });
+
+      // Supabase returns no session when email confirmation is required.
+      if (result && result.session === null) {
+        setRegisteredEmail(email.trim());
+      }
     } catch (error) {
-      Alert.alert('Registration Failed', 'Could not create account. Please try again later.');
+      const info = getAuthErrorInfo(error, 'Registration Failed');
+      setServerError({ message: info.message, field: info.field });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const clearFieldError = (field) => {
+    setErrors(prev => (prev[field] ? { ...prev, [field]: undefined } : prev));
+    if (serverError) setServerError(null);
+  };
+
+  const updateEmail = (text) => { setEmail(text); clearFieldError('email'); };
+  const updatePhone = (text) => { setPhone(text); clearFieldError('phone'); };
+  const updatePassword = (text) => { setPassword(text); clearFieldError('password'); };
+  const updateConfirmPassword = (text) => { setConfirmPassword(text); clearFieldError('confirmPassword'); };
 
   const refreshSecurityCode = () => {
     setSecurityCode(generateSecurityCode());
@@ -127,7 +146,33 @@ const RegisterScreen = ({ navigation, route }) => {
           </View>
 
           <View style={styles.formCard}>
-            <View style={styles.inputGroup}>
+            {registeredEmail ? (
+              <>
+                <View style={styles.successBanner}>
+                  <SafeIonicons name="checkmark-circle" size={22} color="#16a34a" />
+                  <Text style={styles.successBannerText}>
+                    Account created! We sent a verification link to {registeredEmail}. Please open it to activate your account, then sign in.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => navigation.navigate('Login')}
+                  activeOpacity={0.9}
+                >
+                  <SafeIonicons name="log-in" size={18} color={colors.white} style={styles.buttonIcon} />
+                  <Text style={styles.primaryButtonText}>Go to Login</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+            {serverError && (
+              <View style={styles.errorBanner}>
+                <SafeIonicons name="alert-circle" size={18} color={colors.error} />
+                <Text style={styles.errorBannerText}>{serverError.message}</Text>
+              </View>
+            )}
+
+            <View style={[styles.inputGroup, (errors.email || serverError?.field === 'email') && styles.inputGroupError]}>
               <SafeIonicons name="mail-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
@@ -136,33 +181,34 @@ const RegisterScreen = ({ navigation, route }) => {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={updateEmail}
               />
             </View>
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-            <View style={styles.inputGroup}>
-              <SafeIonicons name="call-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+            <View style={[styles.inputGroup, (errors.phone || serverError?.field === 'phone') && styles.inputGroupError]}>
               <TextInput
                 style={styles.input}
                 placeholder="+254 712 345 678"
                 placeholderTextColor={colors.gray500}
                 keyboardType="phone-pad"
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={updatePhone}
               />
             </View>
             {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+            {serverError?.field === 'phone' && !errors.phone && (
+              <Text style={styles.errorText}>{serverError.message}</Text>
+            )}
 
-            <View style={styles.inputGroup}>
-              <SafeIonicons name="lock-closed-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
+            <View style={[styles.inputGroup, (errors.password || serverError?.field === 'password') && styles.inputGroupError]}>
               <TextInput
                 style={styles.input}
                 placeholder="Create your password"
                 placeholderTextColor={colors.gray500}
                 secureTextEntry={!isPasswordVisible}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={updatePassword}
               />
               <TouchableOpacity onPress={() => setIsPasswordVisible(prev => !prev)} style={styles.eyeButton}>
                 <SafeIonicons
@@ -182,7 +228,7 @@ const RegisterScreen = ({ navigation, route }) => {
                 placeholderTextColor={colors.gray500}
                 secureTextEntry={!isConfirmPasswordVisible}
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={updateConfirmPassword}
               />
               <TouchableOpacity onPress={() => setIsConfirmPasswordVisible(prev => !prev)} style={styles.eyeButton}>
                 <SafeIonicons
@@ -193,6 +239,9 @@ const RegisterScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
             {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+            {serverError?.field === 'password' && !errors.password && !errors.confirmPassword && (
+              <Text style={styles.errorText}>{serverError.message}</Text>
+            )}
 
             <View style={styles.inputGroup}>
               <SafeIonicons name="shield-checkmark-outline" size={20} color={colors.blue500} style={styles.inputIcon} />
@@ -264,6 +313,8 @@ const RegisterScreen = ({ navigation, route }) => {
               <SafeIonicons name="log-in" size={16} color={colors.white} style={styles.buttonIcon} />
               <Text style={styles.secondaryButtonText}>Already have an account? Login here</Text>
             </TouchableOpacity>
+              </>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -368,6 +419,46 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     marginTop: spacing.xs,
     marginLeft: spacing.sm,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.35)',
+    borderRadius: 10,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: colors.error,
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
+  },
+  inputGroupError: {
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.4)',
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  successBannerText: {
+    flex: 1,
+    color: '#15803d',
+    fontSize: fontSizes.sm,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   checkboxRow: {
     flexDirection: 'row',

@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  FlatList,
   Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -172,13 +171,11 @@ const UpgradeScreen = React.memo(({ navigation }) => {
         <Text style={styles.headerTitle}>Level Upgrades</Text>
       </View>
       
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={Platform.OS === 'web' ? { paddingBottom: 100 } : Platform.OS === 'android' ? { flexGrow: 1 } : { paddingBottom: 100 }}
-        nestedScrollEnabled={Platform.OS === 'android'}
-        removeClippedSubviews={Platform.OS === 'android'}
+        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled
         scrollEventThrottle={16}
-        overScrollMode="always"
       >
         {/* Current level info */}
         <View style={styles.currentLevelContainer}>
@@ -257,13 +254,13 @@ const UpgradeScreen = React.memo(({ navigation }) => {
           <Text style={styles.sectionTitle}>Available Upgrades</Text>
           
           {availableLevels.length > 0 ? (
-            <FlatList
-              data={availableLevels}
-              renderItem={renderLevelCard}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-              contentContainerStyle={styles.upgradesList}
-            />
+            // NOTE: deliberately NOT a FlatList. A nested virtualized list
+            // inside a ScrollView hijacks wheel/scroll events on web-PWA and
+            // leaves the page stuck at the bottom (can't scroll back up).
+            // The upgrade list is short, so a simple map is both safe and fast.
+            <View style={styles.upgradesList}>
+              {availableLevels.map((item) => renderLevelCard({ item }))}
+            </View>
           ) : (
             <View style={styles.maxLevelContainer}>
               <LinearGradient
@@ -287,7 +284,10 @@ const UpgradeScreen = React.memo(({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' && { minHeight: '100vh' })
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100, // extra space for the bottom tab bar
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 50,

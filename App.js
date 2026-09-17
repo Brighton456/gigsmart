@@ -50,6 +50,7 @@ if (typeof window !== 'undefined') {
 const PwaGate = () => {
   const { settings, loading: settingsLoading } = useSettings();
   const [settingsTimedOut, setSettingsTimedOut] = useState(false);
+  const { user } = useAuth();
 
   // If settings take too long (slow network), unblock the prompt anyway —
   // a hung settings fetch must not permanently hide the install UX.
@@ -64,7 +65,14 @@ const PwaGate = () => {
     (typeof window !== 'undefined' && !!window.matchMedia?.('(display-mode: standalone)').matches);
   if (isAppMode) return null;
 
-  return <PwaInstallPrompt settings={settings || {}} settingsReady={!settingsLoading || settingsTimedOut} />;
+  return (
+    <PwaInstallPrompt
+      settings={settings || {}}
+      settingsReady={!settingsLoading || settingsTimedOut}
+      isAuthenticated={!!user}
+      isWeb={Platform.OS === 'web'}
+    />
+  );
 };
 
 const RootNavigator = () => {
