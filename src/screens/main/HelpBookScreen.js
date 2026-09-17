@@ -121,10 +121,11 @@ const HelpBookScreen = ({ navigation }) => {
               Our support team is available 24/7 to assist you with any questions or concerns.
             </Text>
             <TouchableOpacity style={styles.contactButton} onPress={() => {
-              // Fetch customer care number from settings (replace with real fetch if needed)
-              const number = globalThis.customerCareNumber || '+254712345678';
-              const url = `https://wa.me/${number.replace('+', '')}`;
-              Linking.openURL(url);
+              // Live number from admin Platform Config, matching HomeScreen's source
+              const number = mergedSettings?.whatsapp_support_number || '+254712345678';
+              const digits = String(number).replace(/[^0-9]/g, '');
+              const url = `https://wa.me/${digits}`;
+              Linking.openURL(url).catch(() => {});
             }}>
               <SafeIonicons name="chatbubbles" size={20} color={colors.white} />
               <Text style={styles.contactButtonText}>Contact Support</Text>

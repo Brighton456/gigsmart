@@ -197,13 +197,13 @@ const AccountScreen = ({ navigation }) => {
   }, [supportMessage, whatsappGroupLink]);
 
   const contactSupport = React.useCallback(() => {
-    const supportPhone = settings?.support_phone;
+    // Canonical admin key (Platform Config → WhatsApp & Support).
+    const supportPhone = settings?.whatsapp_support_number || settings?.support_phone;
     const message = encodeURIComponent(supportMessage);
 
     if (Platform.OS === 'web') {
-      const webUrl = supportPhone
-        ? `https://wa.me/${supportPhone.replace(/[^0-9]/g, '')}?text=${message}`
-        : null;
+      const digits = String(supportPhone || '').replace(/[^0-9]/g, '');
+      const webUrl = digits ? `https://wa.me/${digits}?text=${message}` : null;
       if (webUrl) {
         Linking.openURL(webUrl).catch(() => {
           Alert.alert('Error', 'Could not open WhatsApp. Please try again or contact support directly.');
@@ -212,12 +212,13 @@ const AccountScreen = ({ navigation }) => {
         Alert.alert('Error', 'Support phone number not configured.');
       }
     } else {
-      const whatsappUrl = `whatsapp://send?phone=${supportPhone}&text=${message}`;
+      const digits = String(supportPhone || '').replace(/[^0-9]/g, '');
+      const whatsappUrl = `whatsapp://send?phone=${digits}&text=${message}`;
       Linking.openURL(whatsappUrl).catch(() => {
         Alert.alert('Error', 'Unable to open WhatsApp. Please try again or contact support.');
       });
     }
-  }, [settings?.support_phone, supportMessage]);
+  }, [settings?.whatsapp_support_number, settings?.support_phone, supportMessage]);
   
   // Generate a random profile image
   const profileImageFallback = `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`;

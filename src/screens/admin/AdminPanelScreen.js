@@ -352,6 +352,7 @@ const AdminPanelScreen = ({ navigation }) => {
     else {
       setSettingEdit(null);
       loadTab('settings');
+      PlatformAlert.alert('Setting saved', `"${settingEdit.key}" is now "${String(settingValue).trim()}". Live for all users within seconds.`);
     }
   };
 

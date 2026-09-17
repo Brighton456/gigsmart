@@ -952,11 +952,15 @@ const styles = StyleSheet.create({
   },
   customerCareButton: {
     position: 'absolute',
-    bottom: Platform.OS === 'web' ? 20 : 30,
+    // Web: lift above the fixed bottom tab bar and stack over it
+    // (zIndex 20 > the tab bar's 10) so the button is always visible.
+    bottom: Platform.OS === 'web' ? 80 : 30,
     right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
+    zIndex: 20,
+    elevation: 6,
     ...shadows.lg,
   },
   customerCareInner: {

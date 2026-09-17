@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
   StatusBar,
   Clipboard,
   Alert,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import SafeIonicons from '../../components/SafeIonicons';
+import shareText from '../../utils/share';
 import { useAuth } from '../../context/SupabaseAuthContext';
 import { useUser } from '../../context/SupabaseUserContext';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
@@ -28,14 +28,10 @@ const TeamScreen = React.memo(({ navigation }) => {
   const referralLink = referralCode ? `${APP_URL}/register?ref=${referralCode}` : `${APP_URL}/register`;
   
   const shareReferralLink = async () => {
-    try {
-      await Share.share({
-        message: `Join ${APP_NAME} and earn daily through tasks and referrals! Sign up with my referral link: ${referralLink}`,
-        title: `Join ${APP_NAME}`
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to share referral link.');
-    }
+    await shareText(
+      { message: `Join ${APP_NAME} and earn daily through tasks and referrals! Sign up with my referral link: ${referralLink}`, title: `Join ${APP_NAME}` },
+      'Referral message copied — paste it anywhere to share.'
+    );
   };
 
   const copyReferralLink = () => {

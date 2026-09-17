@@ -358,6 +358,7 @@ export const AnnouncementsSection = ({ can, refreshKey }) => {
 export const PlatformConfigSection = ({ can, refreshKey }) => {
   const [vals, setVals] = useState(null);
   const [edit, setEdit] = useState(null); // { key, value, hint }
+  const [saving, setSaving] = useState(false);
 
   const DEFINITIONS = [
     { group: 'Money & Payouts', icon: 'cash', items: [
@@ -408,9 +409,15 @@ export const PlatformConfigSection = ({ can, refreshKey }) => {
     if (!edit) return;
     const v = String(edit.value).trim();
     if (!v) { PlatformAlert.alert('Empty value', 'Enter a value or cancel.'); return; }
+    setSaving(true);
     const { error } = await adminService.setConfig(edit.key, v, { reason: `changed ${edit.key}` });
+    setSaving(false);
     if (error) PlatformAlert.alert('Save failed', error.message);
-    else { setEdit(null); load(); }
+    else {
+      setEdit(null);
+      load();
+      PlatformAlert.alert('Setting saved', `"${edit.key}" is now "${v}". Live for all users within seconds.`);
+    }
   };
 
   return (
@@ -418,33 +425,40 @@ export const PlatformConfigSection = ({ can, refreshKey }) => {
       <Text style={sec.dimText}>These are live platform defaults — every user's app reads them on load. Saved changes apply within seconds.</Text>
       {DEFINITIONS.map((g) => (
         <Section key={g.group} title={g.group} icon={g.icon}>
+          {/* Inline editor replaces the old Modal-in-ScrollView, which
+              captured keystrokes unreliably on web — an admin could open
+              the editor but not type into it. */}
           {g.items.map((it) => (
-            <Row
-              key={it.key}
-              title={it.label}
-              sub={it.key}
-              right={(
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={can('settings.app') ? () => setEdit({ key: it.key, value: String(vals[it.key] ?? '') }) : null}>
-                  <Text style={sec.valText} numberOfLines={1}>{String(vals[it.key] ?? '—')}</Text>
-                  <SafeIonicons name="create" size={15} color={AC.accent} style={{ marginLeft: 8 }} />
-                </TouchableOpacity>
-              )}
-            />
+            <View key={it.key}>
+              <Row
+                title={it.label}
+                sub={it.key}
+                right={(
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={can('settings.app') ? () => setEdit({ key: it.key, value: String(vals[it.key] ?? '') }) : null}>
+                    <Text style={sec.valText} numberOfLines={1}>{String(vals[it.key] ?? '—')}</Text>
+                    <SafeIonicons name="create" size={15} color={AC.accent} style={{ marginLeft: 8 }} />
+                  </TouchableOpacity>
+                )}
+              />
+              {edit?.key === it.key ? (
+                <View style={{ paddingBottom: spacing.sm }}>
+                  <TF
+                    label="New value"
+                    value={edit.value}
+                    onChangeText={(v) => setEdit((e) => ({ ...e, value: v }))}
+                    multiline={false}
+                    autoFocus
+                  />
+                  <View style={{ flexDirection: 'row' }}>
+                    <Btn label="Cancel" tone="ghost" onPress={() => setEdit(null)} />
+                    <Btn label={saving ? 'Saving…' : 'Save'} tone="green" onPress={save} />
+                  </View>
+                </View>
+              ) : null}
+            </View>
           ))}
         </Section>
       ))}
-      <Modal visible={!!edit} animationType="fade" transparent>
-        <View style={sec.overlay}>
-          <View style={sec.modalCard}>
-            <Text style={sec.modalTitle2}>{edit?.key}</Text>
-            <TF label="New value" value={edit?.value || ''} onChangeText={(v) => setEdit((e) => ({ ...e, value: v }))} multiline={false} />
-            <View style={{ flexDirection: 'row' }}>
-              <Btn label="Cancel" tone="ghost" onPress={() => setEdit(null)} />
-              <Btn label="Save" tone="green" onPress={save} />
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };

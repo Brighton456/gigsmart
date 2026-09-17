@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Share,
   Alert,
   StatusBar,
   Clipboard,
@@ -20,6 +19,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { colors, gradients, spacing, fontSizes, shadows } from '../../constants/theme';
 import { APP_NAME, APP_URL, APP_SHORT_NAME } from '../../constants/branding';
 import LazyAsset from '../../components/LazyAsset';
+import shareText from '../../utils/share';
 
 const ReferralScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -49,16 +49,13 @@ const ReferralScreen = ({ navigation }) => {
     Alert.alert('Success', 'Referral link copied to clipboard!');
   };
   
-  // Share referral link
+  // Share referral link — uses the Web Share API on web (RN's Share is a
+  // no-op there) with a copy-to-clipboard fallback, so the button always works.
   const shareReferralLink = async () => {
-    try {
-      await Share.share({
-        message: messageTemplates[selectedTemplate],
-        title: `Join ${APP_NAME}`
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to share referral link.');
-    }
+    await shareText(
+      { message: messageTemplates[selectedTemplate], title: `Join ${APP_NAME}` },
+      'Referral message copied — paste it anywhere to share.'
+    );
   };
   
   // Commission structure — percentages of the referred user's level package,
