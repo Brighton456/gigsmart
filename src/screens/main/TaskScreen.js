@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   FlatList,
   TouchableOpacity,
   Image,
@@ -285,6 +286,16 @@ const TaskScreen = React.memo(({ navigation }) => {
         onHide={() => dismissNotification(currentNotification?.id)} 
       />
       
+      {/* ONE page-level scroller owns vertical scrolling. The previous layout
+          (100vh container + nested vertical FlatList) trapped the page at the
+          bottom on web because the inner list swallowed wheel events. */}
+      <ScrollView
+        style={styles.pageScroll}
+        contentContainerStyle={styles.pageScrollContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+        scrollEventThrottle={16}
+      >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Daily Tasks</Text>
       </View>
@@ -356,14 +367,15 @@ const TaskScreen = React.memo(({ navigation }) => {
             </Text>
           </View>
           
-          <FlatList
-            data={installingApps}
-            keyExtractor={(item) => item.id}
-            renderItem={renderInstallationItem}
-            contentContainerStyle={styles.installationsList}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          />
+          {/* Horizontal installs row — max 1 concurrent, so a plain row is fine
+              (no nested virtualized list to fight the page scroller). */}
+          <View style={[styles.installationsList, styles.installationsRow]}>
+            {installingApps.map((item) => (
+              <View key={item.id} style={styles.installationsRowItem}>
+                {renderInstallationItem({ item })}
+              </View>
+            ))}
+          </View>
         </View>
       )}
       
@@ -524,29 +536,24 @@ const TaskScreen = React.memo(({ navigation }) => {
             </LinearGradient>
           </View>
         ) : (
-          <FlatList
-            data={visibleTaskApps}
-            keyExtractor={(item) => item.id}
-            renderItem={renderAppItem}
-            contentContainerStyle={styles.appsList}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={3}
-            updateCellsBatchingPeriod={100}
-            initialNumToRender={5}
-            windowSize={5}
-            ListHeaderComponent={
-              <View style={styles.storeListHeader}>
-                <Text style={styles.featuredText}>Featured Apps</Text>
-                <View style={styles.sortContainer}>
-                  <SafeIonicons name="funnel-outline" size={14} color={colors.blue300} />
-                  <Text style={styles.sortText}>Sort by: Newest</Text>
-                </View>
+          // NOTE: NOT a FlatList — a nested vertical list inside the page
+          // ScrollView hijacks wheel events on web-PWA and freezes the page
+          // at the bottom. The catalog is small; map it out instead.
+          <View style={styles.appsList}>
+            <View style={styles.storeListHeader}>
+              <Text style={styles.featuredText}>Featured Apps</Text>
+              <View style={styles.sortContainer}>
+                <SafeIonicons name="funnel-outline" size={14} color={colors.blue300} />
+                <Text style={styles.sortText}>Sort by: Newest</Text>
               </View>
-            }
-          />
+            </View>
+            {visibleTaskApps.map((item) => (
+              <View key={item.id}>{renderAppItem({ item })}</View>
+            ))}
+          </View>
         )}
       </View>
+      </ScrollView>
     </LinearGradient>
   );
 });
@@ -554,7 +561,13 @@ const TaskScreen = React.memo(({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    ...(Platform.OS === 'web' && { minHeight: '100vh' })
+  },
+  pageScroll: {
+    flex: 1,
+  },
+  pageScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100, // clearance for the fixed bottom tab bar
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 50,
@@ -699,8 +712,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   installationsList: {
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  installationsRow: {
+    flexDirection: 'row',
+  },
+  installationsRowItem: {
+    width: 250,
+    marginRight: spacing.md,
   },
   installationItem: {
     width: 250,
