@@ -72,6 +72,14 @@ async function loadAndReport(browser, url, label) {
     hasRootNavigator: typeof window.RootNavigator,
     hasApp: typeof window.App,
     scriptCount: document.querySelectorAll('script[src]').length,
+    // Layout sanity: the app container must actually fill the viewport.
+    // (A collapsed 0px root renders the UI squished at the top of the screen.)
+    layout: (() => {
+      const root = document.getElementById('root');
+      const first = root && root.firstElementChild;
+      const h = first ? first.getBoundingClientRect().height : 0;
+      return { firstChildHeight: Math.round(h), viewportHeight: innerHeight, fillsViewport: h > innerHeight * 0.5 };
+    })(),
   }));
 
   console.log(`\n=== ${label}: ${url} ===`);
@@ -79,7 +87,7 @@ async function loadAndReport(browser, url, label) {
   console.log(`--- ${label} console/network ---`);
   for (const l of logs) console.log(l);
   await page.close();
-  return state.rootChildren > 0;
+  return state;
 }
 
 async function main() {
@@ -89,8 +97,11 @@ async function main() {
   const puppeteer = require('puppeteer');
   const browser = await puppeteer.launch({ channel: 'chrome', headless: 'new' });
 
-  const mountedWithoutDevShell = await loadAndReport(browser, `http://localhost:${PORT}/__test-nodevshell.html`, 'CLEAN');
-  const mountedAsDeployed = await loadAndReport(browser, `http://localhost:${PORT}/`, 'AS-DEPLOYED');
+  const cleanState = await loadAndReport(browser, `http://localhost:${PORT}/__test-nodevshell.html`, 'CLEAN');
+  const deployedState = await loadAndReport(browser, `http://localhost:${PORT}/`, 'AS-DEPLOYED');
+
+  const mountedWithoutDevShell = cleanState.rootChildren > 0;
+  const mountedAsDeployed = deployedState.rootChildren > 0;
 
   await browser.close();
   server.close();
@@ -99,7 +110,9 @@ async function main() {
   console.log(`\n=== SUMMARY ===`);
   console.log(`CLEAN variant mounts: ${mountedWithoutDevShell}`);
   console.log(`AS-DEPLOYED mounts:   ${mountedAsDeployed}`);
-  process.exit(mountedAsDeployed || mountedWithoutDevShell ? 0 : 2);
+  const layoutOk = !!deployedState.layout?.fillsViewport;
+  console.log(`AS-DEPLOYED layout fills viewport: ${layoutOk} (first child ${deployedState.layout?.firstChildHeight}px of ${deployedState.layout?.viewportHeight}px viewport)`);
+  process.exit(mountedAsDeployed && layoutOk ? 0 : 2);
 }
 
 main().catch((e) => { console.error('VERIFY FAILED:', e.message); process.exit(1); });
