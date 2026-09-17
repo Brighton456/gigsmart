@@ -12,6 +12,24 @@
   <script>
     (function () {
       var MODE_KEY = 'gigs_pwa_mode';
+      var APP_VERSION = '3'; // must match SW VERSION (public/sw.js)
+
+      // SELF-HEAL: if an older build registered a service worker, this new
+      // build removes it and wipes its caches once, then reloads with a clean
+      // slate. Users stuck on the old broken shell are rescued automatically.
+      var lastHeal = 0;
+      try { lastHeal = Number(localStorage.getItem('gigs_healed_v') || 0); } catch (e) {}
+      if (lastHeal < APP_VERSION && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try { localStorage.setItem('gigs_healed_v', String(APP_VERSION)); } catch (e) {}
+        navigator.serviceWorker.getRegistrations()
+          .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister(); })); })
+          .then(function () { return caches.keys(); })
+          .then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); })
+          .then(function () { location.replace(location.href); })
+          .catch(function () { /* keep loading anyway */ });
+        return; // this load is disposable; the reload runs the clean path
+      }
+
       var path = location.pathname.replace(/\/+$/, '') || '/';
       var mode = null;
       try { mode = sessionStorage.getItem(MODE_KEY); } catch (e) { /* storage blocked */ }
@@ -130,6 +148,28 @@
           }
         }, 8000);
       });
+
+      // AUTO-UPDATE: ask the service worker which version is running. If the
+      // app is fully loaded but the worker reports a DIFFERENT build than the
+      // one that loaded this page, reload exactly once per session to pick up
+      // the new deploy — users never have to "refresh to see changes" again.
+      // (Page tag and SW VERSION below must stay in lockstep.)
+      var PAGE_BUILD = 'v3';
+      var alreadyUpdated = null;
+      try { alreadyUpdated = sessionStorage.getItem('gigs_updated'); } catch (e) {}
+      setTimeout(function () {
+        if (!('serviceWorker' in navigator) || alreadyUpdated) return;
+        navigator.serviceWorker.ready.then(function (reg) {
+          var channel = new MessageChannel();
+          channel.port1.onmessage = function (event) {
+            if (event.data && event.data.type === 'VERSION' && event.data.version !== PAGE_BUILD) {
+              try { sessionStorage.setItem('gigs_updated', '1'); } catch (e) {}
+              location.reload();
+            }
+          };
+          reg.active && reg.active.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+        }).catch(function () {});
+      }, 5000);
     })();
   </script>
   <!-- The app bundle is injected here at build time by webpack. -->
