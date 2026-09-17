@@ -36,7 +36,6 @@ const RegisterScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState(null);
-  const [registeredEmail, setRegisteredEmail] = useState(null); // set when email confirmation is required
 
   const { signUp } = useAuth();
 
@@ -89,18 +88,13 @@ const RegisterScreen = ({ navigation, route }) => {
 
     setIsLoading(true);
     try {
-      const result = await signUp({
+      await signUp({
         email,
         phone,
         password,
         referralCode: referrer,
         securityCode,
       });
-
-      // Supabase returns no session when email confirmation is required.
-      if (result && result.session === null) {
-        setRegisteredEmail(email.trim());
-      }
     } catch (error) {
       const info = getAuthErrorInfo(error, 'Registration Failed');
       setServerError({ message: info.message, field: info.field });
@@ -146,25 +140,6 @@ const RegisterScreen = ({ navigation, route }) => {
           </View>
 
           <View style={styles.formCard}>
-            {registeredEmail ? (
-              <>
-                <View style={styles.successBanner}>
-                  <SafeIonicons name="checkmark-circle" size={22} color="#16a34a" />
-                  <Text style={styles.successBannerText}>
-                    Account created! We sent a verification link to {registeredEmail}. Please open it to activate your account, then sign in.
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => navigation.navigate('Login')}
-                  activeOpacity={0.9}
-                >
-                  <SafeIonicons name="log-in" size={18} color={colors.white} style={styles.buttonIcon} />
-                  <Text style={styles.primaryButtonText}>Go to Login</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
             {serverError && (
               <View style={styles.errorBanner}>
                 <SafeIonicons name="alert-circle" size={18} color={colors.error} />
@@ -313,8 +288,6 @@ const RegisterScreen = ({ navigation, route }) => {
               <SafeIonicons name="log-in" size={16} color={colors.white} style={styles.buttonIcon} />
               <Text style={styles.secondaryButtonText}>Already have an account? Login here</Text>
             </TouchableOpacity>
-              </>
-            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -441,24 +414,6 @@ const styles = StyleSheet.create({
   inputGroupError: {
     borderWidth: 1,
     borderColor: colors.error,
-  },
-  successBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(22, 163, 74, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.4)',
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  successBannerText: {
-    flex: 1,
-    color: '#15803d',
-    fontSize: fontSizes.sm,
-    lineHeight: 18,
-    fontWeight: '500',
   },
   checkboxRow: {
     flexDirection: 'row',
