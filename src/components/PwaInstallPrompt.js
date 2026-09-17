@@ -48,6 +48,7 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
   const [isStandalone, setIsStandalone] = useState(false);
   const [delaySecs, setDelaySecs] = useState(5);
   const [iosInstructions, setIosInstructions] = useState(false);
+  const [promptUnavailable, setPromptUnavailable] = useState(false);
   const shownRef = useRef(false);
 
   const enabled = String(settings?.pwa_install_prompt ?? 'enabled') !== 'disabled';
@@ -98,6 +99,7 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
 
   // Show the prompt once per session after the configured delay.
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.__GIGS_IS_APP__ === true) return undefined; // inside installed app
     if (!enabled || !settingsReady || isStandalone) return undefined;
     if (platform === 'ios' && !iosBanner) return undefined;
 
@@ -123,6 +125,7 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
 
   const install = async () => {
     if (deferredPrompt) {
+      setPromptUnavailable(false);
       adminService.trackPwaEvent('install_accepted', getSessionId());
       try {
         deferredPrompt.prompt();
@@ -135,6 +138,11 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
       setVisible(false);
     } else if (platform === 'ios') {
       setIosInstructions(true);
+    } else {
+      // Chrome/Edge didn't fire beforeinstallprompt (manifest/SW checks were
+      // still pending, or the browser blocks programmatic prompts). Guide the
+      // user through the native menu instead of a dead button.
+      setPromptUnavailable(true);
     }
   };
 
@@ -180,6 +188,11 @@ const PwaInstallPrompt = ({ settings, settingsReady }) => {
                   {platform === 'ios' ? 'Show me how' : 'Install App'}
                 </Text>
               </TouchableOpacity>
+              {promptUnavailable && (
+                <Text style={s.menuHint}>
+                  One-tap install isn't available right now — open your browser menu (⋮) and tap "Install app" or "Add to Home screen".
+                </Text>
+              )}
               <TouchableOpacity onPress={dismiss} hitSlop={{ top: 10, bottom: 10 }}>
                 <Text style={s.later}>Not now</Text>
               </TouchableOpacity>
@@ -234,6 +247,7 @@ const s = StyleSheet.create({
   stepText: { color: colors.textPrimary, fontSize: fontSizes.sm, flex: 1 },
   stepBold: { fontWeight: 'bold' },
   installBtn: { backgroundColor: colors.success, borderRadius: 12, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  menuHint: { color: colors.warning, fontSize: fontSizes.xs, textAlign: 'center', lineHeight: 17, marginBottom: spacing.sm },
   installText: { color: colors.white, fontWeight: 'bold', fontSize: fontSizes.md, marginLeft: 8 },
   later: { color: colors.textMuted, textAlign: 'center', fontSize: fontSizes.sm, padding: 6 },
 });

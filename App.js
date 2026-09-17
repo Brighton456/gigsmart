@@ -45,9 +45,26 @@ if (typeof window !== 'undefined') {
 }
 
 // Gates the install prompt on settings readiness so admin toggles apply.
+// Never shown inside the installed app (launched at /app from the home
+// screen) — installing from inside the installed app makes no sense.
 const PwaGate = () => {
   const { settings, loading: settingsLoading } = useSettings();
-  return <PwaInstallPrompt settings={settings || {}} settingsReady={!settingsLoading} />;
+  const [settingsTimedOut, setSettingsTimedOut] = useState(false);
+
+  // If settings take too long (slow network), unblock the prompt anyway —
+  // a hung settings fetch must not permanently hide the install UX.
+  React.useEffect(() => {
+    if (!settingsLoading) return undefined;
+    const t = setTimeout(() => setSettingsTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, [settingsLoading]);
+
+  const isAppMode =
+    (typeof window !== 'undefined' && window.__GIGS_IS_APP__ === true) ||
+    (typeof window !== 'undefined' && !!window.matchMedia?.('(display-mode: standalone)').matches);
+  if (isAppMode) return null;
+
+  return <PwaInstallPrompt settings={settings || {}} settingsReady={!settingsLoading || settingsTimedOut} />;
 };
 
 const RootNavigator = () => {
@@ -137,8 +154,18 @@ const App = () => {
       html.style.margin = '0';
       html.style.padding = '0';
 
+      // Fixed app feel: block iOS pinch-zoom (Android is already locked by the
+      // viewport meta tag) and double-tap zoom on all platforms.
+      const preventGesture = (e) => e.preventDefault();
+      document.addEventListener('gesturestart', preventGesture, { passive: false });
+      document.addEventListener('gesturechange', preventGesture, { passive: false });
+      document.addEventListener('gestureend', preventGesture, { passive: false });
+
       return () => {
         console.log('🧽 Cleaning up web-specific body styles');
+        document.removeEventListener('gesturestart', preventGesture);
+        document.removeEventListener('gesturechange', preventGesture);
+        document.removeEventListener('gestureend', preventGesture);
         document.body.style.background = previousBackground;
         document.body.style.backgroundColor = previousColor;
         document.body.style.margin = previousMargin;
