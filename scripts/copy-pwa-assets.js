@@ -41,4 +41,8 @@ for (const name of iconNames) {
   else console.warn(`⚠ missing ${path.relative(root, src)}`);
 }
 
+// 3. Netlify SPA fallback so deep routes (/login etc.) serve index.html
+fs.writeFileSync(path.join(dist, '_redirects'), '/*    /index.html   200\n');
+console.log('✔ wrote dist/_redirects (Netlify SPA fallback)');
+
 console.log('✅ PWA assets copied into dist/');
